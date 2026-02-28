@@ -4,6 +4,13 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 type NavLink = { label: string; href: string };
+
+type HeatRange = {
+  min: number;
+  max: number;
+  descriptor: string;
+};
+
 type Chili = {
   name: string;
   region: string;
@@ -13,7 +20,10 @@ type Chili = {
   notes: [string, string, string];
   use: string;
   drying: string;
+  heat: HeatRange;
+  archiveNo?: string;
 };
+
 type Post = { title: string; excerpt: string; date: string; href: string; tag: string };
 
 const NAV_LINKS: NavLink[] = [
@@ -34,37 +44,45 @@ const FEATURED_CHILIES: Chili[] = [
     harvestYear: '2025',
     notes: ['Dried cherry', 'Cocoa husk', 'Black tea'],
     drying: 'Sun-dried for depth and clarity.',
-    use: 'Sauces, broths, slow braises.',
+    use: 'Sauces, broths, slow braises',
+    heat: { min: 2500, max: 5000, descriptor: 'Gentle warmth' },
+    archiveNo: '2025–MX–OAX–GUA',
   },
   {
-    name: 'Aleppo',
-    region: 'Southern Turkey',
-    country: 'Turkey',
+    name: 'Ancho',
+    region: 'Puebla Highlands',
+    country: 'Mexico',
     species: 'Capsicum annuum',
     harvestYear: '2025',
-    notes: ['Sun-dried tomato', 'Olive', 'Warm spice'],
-    drying: 'Sun + shade finishing to preserve brightness.',
-    use: 'Eggs, grains, roasted vegetables.',
+    notes: ['Raisin', 'Dark chocolate', 'Dried plum'],
+    drying: 'Slow sun-drying to concentrate natural sweetness.',
+    use: 'Moles, stews, braised vegetables',
+    heat: { min: 1000, max: 2000, descriptor: 'Mild warmth' },
+    archiveNo: '2025–MX–PUE–ANC',
   },
   {
-    name: 'Kashmiri',
-    region: 'Kashmir Valley',
-    country: 'India',
-    species: 'Capsicum annuum',
-    harvestYear: '2025',
-    notes: ['Bright red fruit', 'Soft warmth', 'Earth'],
-    drying: 'Shade-forward drying for lifted aromatics.',
-    use: 'Yogurt sauces, stews, lentils.',
-  },
-  {
-    name: 'Chipotle Morita',
+    name: 'Chipotle',
     region: 'Sierra Norte',
     country: 'Mexico',
     species: 'Capsicum annuum',
     harvestYear: '2025',
-    notes: ['Soft smoke', 'Tamarind', 'Dark cacao'],
-    drying: 'Occasional smoke, used as structure.',
-    use: 'Beans, marinades, long-cooked sauces.',
+    notes: ['Wood smoke', 'Tamarind', 'Tobacco'],
+    drying: 'Traditionally smoked over wood for layered aroma.',
+    use: 'Beans, marinades, long-cooked sauces',
+    heat: { min: 2500, max: 8000, descriptor: 'Steady warmth' },
+    archiveNo: '2025–MX–SNO–CHP',
+  },
+  {
+    name: 'Chile de Árbol',
+    region: 'Jalisco',
+    country: 'Mexico',
+    species: 'Capsicum annuum',
+    harvestYear: '2025',
+    notes: ['Bright red fruit', 'Clean spice', 'Structured heat'],
+    drying: 'Rapid sun-drying to preserve clarity.',
+    use: 'Salsas, chili oils, finishing heat',
+    heat: { min: 15000, max: 30000, descriptor: 'Direct heat' },
+    archiveNo: '2025–MX–JAL–ARB',
   },
 ];
 
@@ -121,6 +139,19 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
+function slugify(input: string) {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/[’']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function formatSHURange(min: number, max: number) {
+  return `${min.toLocaleString()}–${max.toLocaleString()} SHU`;
+}
+
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
 
@@ -155,13 +186,16 @@ function Reveal({
   children,
   className,
   delayMs = 0,
+  threshold = 0.12,
 }: {
   children: React.ReactNode;
   className?: string;
   delayMs?: number;
+  threshold?: number;
 }) {
   const reduced = usePrefersReducedMotion();
-  const { ref, inView } = useInView<HTMLDivElement>({ threshold: 0.12 });
+  const options = useMemo<IntersectionObserverInit>(() => ({ threshold }), [threshold]);
+  const { ref, inView } = useInView<HTMLDivElement>(options);
 
   return (
     <div
@@ -264,6 +298,65 @@ function SectionFigure({
   );
 }
 
+function HeroCTA({
+  href,
+  label,
+  variant = 'primary',
+}: {
+  href: string;
+  label: string;
+  variant?: 'primary' | 'secondary';
+}) {
+  const base =
+    'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm transition-[transform,background-color,border-color,box-shadow] duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/90';
+
+  if (variant === 'primary') {
+    return (
+      <a
+        href={href}
+        className={cx(
+          base,
+          'border border-white/35 bg-white/12 text-white shadow-[0_18px_60px_rgba(0,0,0,0.18)] hover:bg-white/16'
+        )}
+      >
+        {label}
+        <IconArrowRight className="h-4 w-4 opacity-75" />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      className={cx(base, 'border border-white/28 bg-transparent text-white/90 hover:bg-white/10')}
+    >
+      {label}
+    </a>
+  );
+}
+
+function RecordCTA({ href, label, ariaLabel }: { href: string; label: string; ariaLabel: string }) {
+  // No button fill. Quiet underline. Deep chili red as a trace (local to this element).
+  const chiliRed = '#8C1C1C';
+
+  return (
+    <a
+      href={href}
+      aria-label={ariaLabel}
+      className="inline-flex items-center gap-2 rounded outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
+      style={{ color: chiliRed }}
+    >
+      <span
+        className="text-sm underline underline-offset-4 decoration-[rgba(17,17,17,.16)] transition-colors"
+        style={{ textDecorationColor: 'rgba(17,17,17,.16)' }}
+      >
+        {label}
+      </span>
+      <IconArrowRight className="h-4 w-4 opacity-70" />
+    </a>
+  );
+}
+
 export default function Page() {
   const noise = useNoiseBackground();
   const reduced = usePrefersReducedMotion();
@@ -300,7 +393,6 @@ export default function Page() {
       setEmail('');
       window.setTimeout(() => setSubscribed(false), 2200);
     } catch {
-      // keep it calm; no big error UI yet
       setSubscribed(false);
     }
   }
@@ -324,12 +416,6 @@ export default function Page() {
           --earth: #7C5C3A;
           --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, "Cormorant Garamond", Garamond, serif;
           --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-        }
-
-        @keyframes cluba-pan {
-          0%   { transform: translate3d(-2%, -1%, 0) scale(1.04); }
-          50%  { transform: translate3d( 2%,  1%, 0) scale(1.06); }
-          100% { transform: translate3d(-2%, -1%, 0) scale(1.04); }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -358,9 +444,7 @@ export default function Page() {
               className="inline-flex items-baseline gap-2 rounded-md outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
               aria-label="CLUBA home"
             >
-              <span className="font-[var(--serif)] text-lg tracking-[0.22em] uppercase" style={{ letterSpacing: '0.22em' }}>
-                CLUBA
-              </span>
+              <span className="font-[var(--serif)] text-lg tracking-[0.22em] uppercase">CLUBA</span>
               <span className="hidden text-xs text-[var(--muted)] sm:inline">Beyond Heat. Defined by Origin.</span>
             </a>
           </div>
@@ -388,9 +472,9 @@ export default function Page() {
             <a
               href="#collection"
               className="inline-flex items-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_38px_rgba(0,0,0,0.10)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-              aria-label="View the collection"
+              aria-label="See current harvest"
             >
-              View Collection
+              See Current Harvest
               <IconArrowRight className="h-4 w-4 opacity-70" />
             </a>
           </div>
@@ -412,31 +496,43 @@ export default function Page() {
         <div
           id="mobile-menu"
           className={cx(
-            'md:hidden overflow-hidden border-t border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_92%,transparent)] transition-[max-height,opacity] duration-300',
-            menuOpen ? 'max-h-[520px] opacity-100' : 'max-h-0 opacity-0'
+            'md:hidden border-t border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_92%,transparent)]',
+            reduced ? '' : 'transition-[opacity] duration-300',
+            menuOpen ? 'opacity-100' : 'opacity-0'
           )}
           aria-hidden={!menuOpen}
         >
-          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
-            <div className="flex flex-col gap-3">
-              {NAV_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-md px-2 py-2 text-sm text-[var(--muted)] outline-none transition-colors hover:text-[var(--ink)] focus:text-[var(--ink)] focus:ring-2 focus:ring-[var(--accent)]"
-                >
-                  {l.label}
-                </a>
-              ))}
-              <a
-                href="#collection"
-                onClick={() => setMenuOpen(false)}
-                className="mt-2 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-              >
-                View Collection
-                <IconArrowRight className="h-4 w-4 opacity-70" />
-              </a>
+          <div
+            className={cx(
+              'grid overflow-hidden',
+              reduced ? '' : 'transition-[grid-template-rows,transform] duration-300 ease-out',
+              menuOpen ? 'grid-rows-[1fr] translate-y-0' : 'grid-rows-[0fr] -translate-y-1'
+            )}
+          >
+            <div className="min-h-0">
+              <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+                <div className="flex flex-col gap-3">
+                  {NAV_LINKS.map((l) => (
+                    <a
+                      key={l.href}
+                      href={l.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded-md px-2 py-2 text-sm text-[var(--muted)] outline-none transition-colors hover:text-[var(--ink)] focus:text-[var(--ink)] focus:ring-2 focus:ring-[var(--accent)]"
+                    >
+                      {l.label}
+                    </a>
+                  ))}
+                  <a
+                    href="#collection"
+                    onClick={() => setMenuOpen(false)}
+                    className="mt-2 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                    aria-label="See current harvest"
+                  >
+                    See Current Harvest
+                    <IconArrowRight className="h-4 w-4 opacity-70" />
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -445,7 +541,6 @@ export default function Page() {
       <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Cinematic Hero */}
         <section aria-label="Hero" className="relative h-[88vh] min-h-[640px] w-full overflow-hidden">
-          {/* Video Background */}
           <video
             autoPlay
             muted
@@ -458,10 +553,8 @@ export default function Page() {
             <source src="/hero.mp4" type="video/mp4" />
           </video>
 
-          {/* Dark gradient overlay for readability */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
 
-          {/* Subtle warm overlay for brand tone */}
           <div
             className="absolute inset-0"
             style={{
@@ -470,7 +563,6 @@ export default function Page() {
             }}
           />
 
-          {/* Subtle film grain (only if motion allowed) */}
           {!reduced ? (
             <div
               aria-hidden="true"
@@ -479,57 +571,50 @@ export default function Page() {
             />
           ) : null}
 
-          {/* Content */}
           <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-6 text-center">
             <p className="mb-6 text-xs uppercase tracking-[0.25em] text-white/80">
-              Whole pods · Harvest year labeled · No additives
+              WHOLE PODS · HARVEST YEAR LABELED · NO ADDITIVES
             </p>
 
             <h1 className="font-[var(--serif)] text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
               Beyond Heat. Defined by Origin.
             </h1>
 
-            <p className="mt-6 max-w-2xl font-[var(--sans)] text-base leading-relaxed text-white/85 sm:text-lg">
-              Single-origin dried chilies identified by region, species, and harvest. Each pod reflects soil, altitude,
-              and drying method.
-            </p>
+            <div className="mt-6 max-w-2xl space-y-2 font-[var(--sans)] text-base leading-relaxed text-white/85 sm:text-lg">
+              <p>Single-origin whole dried chilies.</p>
+              <p>Labeled by region, species, and harvest year.</p>
+              <p>Each pod reflects soil, altitude, and drying method.</p>
+              <p className="pt-1 text-white/80">Flavor leads. Heat completes.</p>
+            </div>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <a
-                href="#collection"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm text-black shadow-lg transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white"
-              >
-                Explore Origins
-              </a>
-
-              <a
-                href="#process"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/70 px-6 py-3 text-sm text-white transition-colors duration-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white"
-              >
-                Discover the Harvest
-              </a>
+              <HeroCTA href="#origins" label="Browse Origins" variant="primary" />
+              <HeroCTA href="#collection" label="See Current Harvest" variant="secondary" />
             </div>
           </div>
         </section>
 
-        {/* Why origin matters */}
+        {/* Origins */}
         <Reveal delayMs={80}>
           <section aria-label="Origins section" className="py-12 sm:py-16" id="origins">
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="lg:col-span-5">
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">
-                  Chili is agricultural, not generic.
-                </h2>
-                <p className="mt-4 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Most dried chili is blended. Origins are rarely disclosed.
-                </p>
-                <p className="mt-4 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">We work differently.</p>
+                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Chili is agricultural.</h2>
+
+                <div className="mt-5 space-y-3 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
+                  <p>Most dried chili is blended.</p>
+                  <p>The field disappears.</p>
+                  <p>We keep it visible.</p>
+                </div>
+
+                <p className="mt-7 text-xs uppercase tracking-[0.26em] text-[var(--muted)]">Place. Plant. Year.</p>
+
                 <p className="mt-6 font-[var(--serif)] text-sm leading-relaxed text-[color:color-mix(in_oklab,var(--ink)_85%,var(--earth))]">
                   Climate shapes sweetness.
                   <br />
                   Altitude refines aroma.
                   <br />
-                  Drying defines depth.
+                  Drying preserves depth.
                 </p>
               </div>
 
@@ -544,21 +629,18 @@ export default function Page() {
                 </div>
 
                 <div className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 sm:p-8">
-                  <p className="font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    From volcanic soil in Oaxaca to high-altitude valleys in Kashmir, each region produces a distinct
-                    expression of the plant.
-                  </p>
-                  <p className="mt-5 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    Each pod reflects soil composition, harvest timing, and drying method. Flavor character is shaped in
-                    the field, then preserved through craft.
+                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">From field to record</p>
+                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                    From volcanic slopes in Oaxaca to high valleys in Kashmir, each origin carries a distinct expression
+                    of the plant.
                   </p>
 
                   <a
-                    href="#process"
+                    href="#species"
                     className="mt-7 inline-flex items-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                    aria-label="Discover the harvest"
+                    aria-label="Continue to species"
                   >
-                    Discover the Harvest
+                    Continue
                     <IconArrowRight className="h-4 w-4 opacity-70" />
                   </a>
                 </div>
@@ -567,15 +649,14 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* Foundations of Flavor */}
+        {/* Species + Flavor Profile */}
         <Reveal delayMs={120}>
-          <section aria-label="Foundations" className="py-12 sm:py-16" id="species">
+          <section aria-label="Species section" className="py-12 sm:py-16" id="species">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">The foundations of flavor.</h2>
+                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Place. Plant. Year.</h2>
                 <p className="mt-3 max-w-2xl font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Origin, species, and process determine aroma structure and heat behavior. We label each clearly so you
-                  can cook with intention.
+                  Origin and species determine fruit chemistry. That changes aroma structure. And how heat arrives.
                 </p>
               </div>
             </div>
@@ -593,10 +674,10 @@ export default function Page() {
               <div className="lg:col-span-7">
                 <div className="grid gap-6">
                   <article className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Origin</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">ORIGIN</p>
                     <h3 className="mt-2 font-[var(--serif)] text-2xl">Origin as identity</h3>
                     <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Soil, altitude, and climate shape structure and aroma.
+                      Soil, climate, and altitude shape the fruit.
                     </p>
                     <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
                       We name every region.
@@ -606,10 +687,16 @@ export default function Page() {
                   </article>
 
                   <article className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Species</p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</p>
                     <h3 className="mt-2 font-[var(--serif)] text-2xl">Plant as species</h3>
                     <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Chili is a family. Different species develop fruit differently.
+                      Chili is a family.
+                      <br />
+                      Species changes fruit chemistry.
+                      <br />
+                      That changes aroma structure.
+                      <br />
+                      And how heat arrives.
                     </p>
                     <div className="mt-5 border-t border-[var(--hair)] pt-5">
                       <p className="font-[var(--serif)] text-sm italic text-[var(--ink)]">Capsicum annuum</p>
@@ -617,21 +704,27 @@ export default function Page() {
                       <p className="font-[var(--serif)] text-sm italic text-[var(--ink)]">Capsicum baccatum</p>
                     </div>
                     <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Different chemistry. Different character.
+                      Different character.
+                      <br />
+                      Different finish.
                     </p>
                   </article>
 
                   <article className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Process</p>
-                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Field to pod</h3>
-                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Harvested at peak maturity. Traditionally dried. Whole pods preserve aroma.
-                    </p>
-                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Grinding is left to the cook.
-                      <br />
-                      Grind only what you need.
-                    </p>
+                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">FLAVOR PROFILE</p>
+                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Taste first. Then warmth.</h3>
+
+                    <div className="mt-3 space-y-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                      <p>Tasting notes describe fruit and earth.</p>
+                      <p>Heat is described as structure.</p>
+                    </div>
+
+                    <div className="mt-5 border-t border-[var(--hair)] pt-5">
+                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Gentle warmth.</p>
+                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Steady heat.</p>
+                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Firm finish.</p>
+                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Clean fade.</p>
+                    </div>
                   </article>
                 </div>
               </div>
@@ -641,17 +734,19 @@ export default function Page() {
 
         {/* Process + Purity */}
         <Reveal delayMs={160}>
-          <section aria-label="Process and purity" className="py-12 sm:py-16" id="process">
+          <section aria-label="Process section" className="py-12 sm:py-16" id="process">
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="lg:col-span-5">
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">How we dry.</h2>
-                <p className="mt-4 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Harvest timing shapes sweetness. Sun drying deepens fruit. Shade drying preserves brightness. Smoke
-                  transforms aroma.
-                </p>
-                <p className="mt-4 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Whole pods protect flavor structure. Grind only what you need.
-                </p>
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">PROCESS</p>
+                <h2 className="mt-2 font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Field to pod</h2>
+
+                <div className="mt-5 space-y-3 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
+                  <p>Harvested at peak maturity.</p>
+                  <p>Traditionally dried.</p>
+                  <p>Whole pods protect aroma.</p>
+                  <p>Grinding is left to the cook.</p>
+                  <p>Grind only what you need.</p>
+                </div>
 
                 <div className="mt-8">
                   <SectionFigure
@@ -664,71 +759,52 @@ export default function Page() {
               </div>
 
               <div className="lg:col-span-7">
-                <div className="grid gap-6 sm:grid-cols-3">
-                  {[
-                    { title: 'Sun', body: 'Deeper fruit. Rounder sweetness.', tag: 'Depth' },
-                    { title: 'Shade', body: 'Brighter aroma. Cleaner finish.', tag: 'Lift' },
-                    { title: 'Smoke', body: 'Used sparingly. Structural, not dominant.', tag: 'Structure' },
-                  ].map((m) => (
-                    <article
-                      key={m.title}
-                      className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]"
-                    >
-                      <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{m.tag}</p>
-                      <h3 className="mt-2 font-[var(--serif)] text-2xl">{m.title}</h3>
-                      <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{m.body}</p>
-                      <div className="mt-5 h-1 w-14 rounded-full bg-[color:color-mix(in_oklab,var(--accent)_65%,var(--earth))] opacity-70" />
-                    </article>
-                  ))}
-                </div>
+                <div className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 sm:p-8">
+                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">How we dry</p>
 
-                <div
-                  className="mt-8 rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 sm:p-8"
-                  id="purity"
-                >
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Purity</p>
-                  <h3 className="mt-2 font-[var(--serif)] text-2xl">Nothing added. Nothing corrected.</h3>
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-6 grid gap-6 sm:grid-cols-3">
                     {[
-                      '0 preservatives',
-                      '0 additives',
-                      '0 artificial coloring',
-                      'Whole pods only',
-                      'Harvest year labeled',
-                      'Protective inner pouch',
-                    ].map((t) => (
-                      <div key={t} className="flex items-start gap-3">
-                        <span
-                          aria-hidden="true"
-                          className="mt-1 inline-block h-2 w-2 rounded-full"
-                          style={{
-                            background:
-                              'radial-gradient(circle at 30% 30%, rgba(124,30,26,.95), rgba(124,30,26,.55))',
-                          }}
-                        />
-                        <p className="font-[var(--sans)] text-sm text-[var(--muted)]">{t}</p>
-                      </div>
+                      { title: 'Sun', body: 'Deeper fruit. Rounder sweetness.' },
+                      { title: 'Shade', body: 'Brighter aroma. Cleaner finish.' },
+                      { title: 'Smoke', body: 'Used sparingly. Structural, not dominant.' },
+                    ].map((m) => (
+                      <article
+                        key={m.title}
+                        className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]"
+                      >
+                        <h3 className="font-[var(--serif)] text-2xl">{m.title}</h3>
+                        <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{m.body}</p>
+                      </article>
                     ))}
                   </div>
 
-                  <p className="mt-6 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    Minimal matte tubes with an inner pouch. Designed to preserve aroma — and to be kept.
-                  </p>
+                  <div className="mt-8 border-t border-[var(--hair)] pt-6">
+                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Unadjusted</p>
+                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Nothing added. Nothing corrected.</h3>
+                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                      Whole pods only. No preservatives. No additives. No artificial coloring.
+                    </p>
+                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                      Minimal matte tubes with an inner pouch. Designed to protect aroma — and to be kept.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
         </Reveal>
 
-        {/* Collection */}
+        {/* Current Harvest */}
         <Reveal delayMs={180}>
           <section aria-label="Collection" className="py-12 sm:py-16" id="collection">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Current harvest selection.</h2>
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">CURRENT HARVEST</p>
+                <h2 className="mt-2 font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">
+                  Defined by place. Labeled by year.
+                </h2>
                 <p className="mt-3 max-w-2xl font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Defined by place. Labeled by year. Whole pods preserve the volatile aromatics that ground spices lose.
+                  Whole pods preserve the volatile aromatics that ground spices lose.
                 </p>
                 <p className="mt-3 max-w-2xl font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
                   Harvest quantities vary by season.
@@ -738,78 +814,87 @@ export default function Page() {
               <a
                 href="#origins"
                 className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                aria-label="Explore origins"
+                aria-label="Browse origins"
               >
-                Explore Origins
+                Browse Origins
                 <IconArrowRight className="h-4 w-4 opacity-70" />
               </a>
             </div>
 
+            {/* Records grid */}
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURED_CHILIES.map((c) => (
-                <article
-                  key={c.name}
-                  className="group relative overflow-hidden rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)] active:translate-y-0"
-                  aria-label={`${c.name} product card`}
-                >
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-35 blur-2xl"
-                    style={{
-                      background:
-                        'radial-gradient(circle at 30% 30%, rgba(124,30,26,.35), rgba(124,92,58,.18), transparent 70%)',
-                    }}
-                  />
+              {FEATURED_CHILIES.map((c) => {
+                const recordHref = `/collection/${slugify(c.name)}-${c.harvestYear}`;
+                return (
+                  <article
+                    key={c.name}
+                    className="group relative overflow-hidden rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)] active:translate-y-0"
+                    aria-label={`${c.name} record`}
+                  >
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-30 blur-2xl"
+                      style={{
+                        background:
+                          'radial-gradient(circle at 30% 30%, rgba(124,30,26,.26), rgba(124,92,58,.14), transparent 70%)',
+                      }}
+                    />
 
-                  <header>
-                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Origin</p>
-                    <h3 className="mt-2 font-[var(--serif)] text-2xl leading-tight">{c.name}</h3>
-                    <p className="mt-2 font-[var(--sans)] text-sm text-[var(--muted)]">
-                      {c.region}, {c.country}
+                    <header>
+                      <h3 className="font-[var(--serif)] text-2xl leading-tight">{c.name}</h3>
+
+                      <p className="mt-2 font-[var(--sans)] text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
+                        {c.region}, {c.country}
+                      </p>
+                    </header>
+
+                    <dl className="mt-5 space-y-3 border-t border-[var(--hair)] pt-5">
+                      {c.archiveNo ? (
+                        <div className="flex items-start justify-between gap-4">
+                          <dt className="text-[10px] uppercase tracking-[0.26em] text-[var(--muted)]">ARCHIVE NO.</dt>
+                          <dd className="text-[11px] font-[var(--sans)] text-[var(--muted)]">{c.archiveNo}</dd>
+                        </div>
+                      ) : null}
+
+                      <div className="flex items-start justify-between gap-4">
+                        <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</dt>
+                        <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{c.species}</dd>
+                      </div>
+
+                      <div className="flex items-start justify-between gap-4">
+                        <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST</dt>
+                        <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{c.harvestYear}</dd>
+                      </div>
+                    </dl>
+
+                    <p className="mt-5 font-[var(--serif)] text-[15px] leading-relaxed text-[var(--ink)]">
+                      {c.notes.join(' · ')}
                     </p>
-                  </header>
 
-                  <dl className="mt-5 space-y-3 border-t border-[var(--hair)] pt-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Species</dt>
-                      <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{c.species}</dd>
+                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{c.drying}</p>
+
+                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                      Heat: {formatSHURange(c.heat.min, c.heat.max)} · {c.heat.descriptor}
+                    </p>
+
+                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                      Ideal for: {c.use}
+                    </p>
+
+                    <div className="mt-6">
+                      <RecordCTA
+                        href={recordHref}
+                        label="View Harvest Record"
+                        ariaLabel={`View harvest record for ${c.name} ${c.harvestYear}`}
+                      />
                     </div>
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Harvest</dt>
-                      <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{c.harvestYear}</dd>
-                    </div>
-                  </dl>
 
-                  <p className="mt-5 font-[var(--serif)] text-sm text-[var(--ink)]">{c.notes.join(' · ')}</p>
-
-                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{c.drying}</p>
-
-                  <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    Ideal for: {c.use}
-                  </p>
-
-                  <div className="mt-6 flex flex-col gap-3">
-                    <a
-                      href="#"
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--ink)] px-4 py-2 text-sm text-[var(--paper)] shadow-[0_14px_40px_rgba(0,0,0,0.16)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                      aria-label={`Add ${c.name} to collection`}
-                    >
-                      Add to Collection
-                      <IconArrowRight className="h-4 w-4 opacity-80" />
-                    </a>
-
-                    <a
-                      href="#process"
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                      aria-label={`View harvest details for ${c.name}`}
-                    >
-                      View Harvest Details
-                    </a>
-                  </div>
-
-                  <p className="mt-5 font-[var(--sans)] text-xs text-[var(--muted)]">Whole pods only. Grind as needed.</p>
-                </article>
-              ))}
+                    <p className="mt-5 font-[var(--sans)] text-xs text-[var(--muted)]">
+                      Whole pods only. Grind as needed.
+                    </p>
+                  </article>
+                );
+              })}
             </div>
           </section>
         </Reveal>
@@ -825,9 +910,9 @@ export default function Page() {
                 </p>
               </div>
               <a
-                href="#"
+                href="/journal"
                 className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                aria-label="Read all field notes"
+                aria-label="Read field notes"
               >
                 Read Field Notes
                 <IconArrowRight className="h-4 w-4 opacity-70" />
@@ -877,23 +962,19 @@ export default function Page() {
           <section aria-label="Closing statement and signup" className="py-12 sm:py-16" id="about">
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="lg:col-span-5">
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">CLOSING</p>
+                <h2 className="mt-2 font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">
                   Beyond heat.
                   <br />
                   Defined by origin.
                 </h2>
-                <p className="mt-4 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Chili deserves the same respect as wine or coffee.
-                </p>
-                <p className="mt-4 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Defined by place. Defined by species. Defined by season.
-                </p>
 
-                <p className="mt-7 font-[var(--serif)] text-sm leading-relaxed text-[color:color-mix(in_oklab,var(--ink)_85%,var(--earth))]">
-                  Heat supports fruit, earth, and warmth.
-                  <br />
-                  It never leads.
-                </p>
+                <div className="mt-5 space-y-3 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
+                  <p>Place shapes flavor.</p>
+                  <p>Season shapes detail.</p>
+                  <p>Heat supports the finish.</p>
+                  <p>It never leads.</p>
+                </div>
 
                 <div className="mt-8">
                   <SectionFigure
@@ -907,7 +988,7 @@ export default function Page() {
 
               <div className="lg:col-span-7">
                 <div className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 sm:p-8">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Field Notes</p>
+                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Field Notes</p>
                   <h3 className="mt-2 font-[var(--serif)] text-2xl">Receive new harvests and writing.</h3>
                   <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
                     Occasional. Useful. No excess.
@@ -968,7 +1049,7 @@ export default function Page() {
             <div>
               <p className="font-[var(--serif)] text-lg tracking-[0.22em] uppercase">CLUBA</p>
               <p className="mt-2 font-[var(--sans)] text-sm text-[var(--muted)]">
-                Botanical single-origin whole chilies. Region, species, harvest — labeled clearly.
+                Single-origin whole dried chilies. Region, species, harvest year — labeled clearly.
               </p>
             </div>
 
@@ -992,8 +1073,12 @@ export default function Page() {
           </div>
 
           <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-[var(--sans)] text-xs text-[var(--muted)]">© {new Date().getFullYear()} CLUBA. Beyond Heat. Defined by Origin.</p>
-            <p className="font-[var(--sans)] text-xs text-[var(--muted)]">Whole pods only · No additives</p>
+            <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
+              © {new Date().getFullYear()} CLUBA. Beyond Heat. Defined by Origin.
+            </p>
+            <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
+              WHOLE PODS · HARVEST YEAR LABELED · NO ADDITIVES
+            </p>
           </div>
         </footer>
       </main>
