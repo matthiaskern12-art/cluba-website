@@ -1,7 +1,0 @@
-name = "cluba-site"
-compatibility_date = "2026-02-22"
-
-# KV bindings
-kv_namespaces = [
-  { binding = "WAITLIST_KV", id = "49fe3c898c2f4a84af1c5e6cd51db62b", preview_id = "867ab57d063a4ba796931d4e1e6e5afc" }
-]
