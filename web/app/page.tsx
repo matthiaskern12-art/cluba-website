@@ -22,6 +22,7 @@ type Chili = {
   drying: string;
   heat: HeatRange;
   archiveNo?: string;
+  available?: boolean;
 };
 
 type Post = { title: string; excerpt: string; date: string; href: string; tag: string };
@@ -47,6 +48,7 @@ const FEATURED_CHILIES: Chili[] = [
     use: 'Sauces, broths, slow braises',
     heat: { min: 2500, max: 5000, descriptor: 'Gentle warmth' },
     archiveNo: '2025–MX–OAX–GUA',
+    available: true,
   },
   {
     name: 'Ancho',
@@ -59,6 +61,7 @@ const FEATURED_CHILIES: Chili[] = [
     use: 'Moles, stews, braised vegetables',
     heat: { min: 1000, max: 2000, descriptor: 'Mild warmth' },
     archiveNo: '2025–MX–PUE–ANC',
+    available: true,
   },
   {
     name: 'Chipotle',
@@ -137,15 +140,6 @@ const SECTION_IMAGES = {
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
-}
-
-function slugify(input: string) {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[’']/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
 }
 
 function formatSHURange(min: number, max: number) {
@@ -252,6 +246,14 @@ function IconArrowRight(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconClose(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" {...props}>
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
 function SkipLink() {
   return (
     <a
@@ -335,27 +337,178 @@ function HeroCTA({
   );
 }
 
-function RecordCTA({ href, label, ariaLabel }: { href: string; label: string; ariaLabel: string }) {
-  // No button fill. Quiet underline. Deep chili red as a trace (local to this element).
-  const chiliRed = '#8C1C1C';
+/* ─── Waitlist Modal ──────────────────────────────────────────────────────── */
+
+function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }) {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const emailId = useId();
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const reduced = usePrefersReducedMotion();
+
+  // Escape key closes modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Focus trap — re-runs when submitted changes (focusable set changes)
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const sel = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const focusable = Array.from(panel.querySelectorAll<HTMLElement>(sel));
+    focusable[0]?.focus();
+
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', onTab);
+    return () => document.removeEventListener('keydown', onTab);
+  }, [submitted]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value) return;
+    try {
+      await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          email: value,
+          source: 'collection-modal',
+          chili: chili.name,
+          archiveNo: chili.archiveNo,
+        }),
+      });
+    } catch {
+      // graceful — show success regardless of network
+    }
+    setSubmitted(true);
+  }
 
   return (
-    <a
-      href={href}
-      aria-label={ariaLabel}
-      className="inline-flex items-center gap-2 rounded outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-      style={{ color: chiliRed }}
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      className="fixed inset-0 z-[200] flex items-end justify-center p-4 sm:items-center"
+      style={{ animation: reduced ? 'none' : 'modalOverlayIn 200ms ease-out both' }}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <span
-        className="text-sm underline underline-offset-4 decoration-[rgba(17,17,17,.16)] transition-colors"
-        style={{ textDecorationColor: 'rgba(17,17,17,.16)' }}
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
+
+      {/* Panel */}
+      <div
+        ref={panelRef}
+        className="relative z-10 w-full max-w-md rounded-3xl border border-[var(--hair)] bg-[var(--paper)] p-6 shadow-[0_32px_80px_rgba(0,0,0,0.22)] sm:p-8"
+        style={{ animation: reduced ? 'none' : 'modalPanelIn 250ms ease-out both' }}
       >
-        {label}
-      </span>
-      <IconArrowRight className="h-4 w-4 opacity-70" />
-    </a>
+        {/* Close */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--hair)] text-[var(--muted)] transition-colors hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+        >
+          <IconClose className="h-4 w-4" />
+        </button>
+
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST RECORD</p>
+        <h2 id="modal-title" className="mt-2 font-[var(--serif)] text-2xl">{chili.name}</h2>
+        <p className="mt-1 font-[var(--sans)] text-sm text-[var(--muted)]">
+          {chili.region}, {chili.country}
+        </p>
+
+        <dl className="mt-5 space-y-2 border-t border-[var(--hair)] pt-5">
+          {chili.archiveNo ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">ARCHIVE NO.</dt>
+              <dd className="text-xs font-[var(--sans)] text-[var(--muted)]">{chili.archiveNo}</dd>
+            </div>
+          ) : null}
+          <div className="flex justify-between gap-4">
+            <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</dt>
+            <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{chili.species}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST</dt>
+            <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{chili.harvestYear}</dd>
+          </div>
+        </dl>
+
+        <p className="mt-5 font-[var(--serif)] text-sm italic text-[var(--ink)]">
+          {chili.notes.join(' · ')}
+        </p>
+        <p className="mt-2 font-[var(--sans)] text-xs text-[var(--muted)]">
+          Heat: {formatSHURange(chili.heat.min, chili.heat.max)} · {chili.heat.descriptor}
+        </p>
+
+        {submitted ? (
+          <div
+            className="mt-6 rounded-2xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] px-5 py-4 text-center"
+            style={{ animation: 'fadeIn 300ms ease-out both' }}
+          >
+            <p className="font-[var(--serif)] text-lg">Noted. Thank you.</p>
+            <p className="mt-1 font-[var(--sans)] text-xs text-[var(--muted)]">
+              We'll reach out when this harvest is ready.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={onSubmit} className="mt-6" aria-label="Waitlist form">
+            <p className="font-[var(--sans)] text-sm text-[var(--muted)]">
+              Join the waitlist for this harvest.
+            </p>
+            <label htmlFor={emailId} className="sr-only">Email</label>
+            <div className="mt-3 flex flex-col gap-3">
+              <input
+                id={emailId}
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@domain.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-2xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_72%,white)] px-4 py-3 font-[var(--sans)] text-sm text-[var(--ink)] outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--ink)] px-5 py-3 text-sm text-[var(--paper)] shadow-[0_14px_40px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
+              >
+                Reserve my place
+                <IconArrowRight className="h-4 w-4 opacity-80" />
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }
+
+/* ─── Page ────────────────────────────────────────────────────────────────── */
 
 export default function Page() {
   const noise = useNoiseBackground();
@@ -368,6 +521,8 @@ export default function Page() {
   const [subscribed, setSubscribed] = useState(false);
   const emailId = useId();
 
+  const [activeChili, setActiveChili] = useState<Chili | null>(null);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
@@ -375,7 +530,7 @@ export default function Page() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  async function onSubmitEmail(e: React.FormEvent) {
+  async function onSubmitEmail(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const value = email.trim();
     if (!value) return;
@@ -406,26 +561,61 @@ export default function Page() {
       }}
     >
       <style>{`
-        :root{
-          --paper: #F6F1E7;
-          --ink: #111111;
-          --muted: rgba(17,17,17,.70);
-          --faint: rgba(17,17,17,.12);
-          --hair: rgba(17,17,17,.16);
+        :root {
+          --paper:  #F6F1E7;
+          --ink:    #111111;
+          --muted:  rgba(17,17,17,.70);
+          --faint:  rgba(17,17,17,.12);
+          --hair:   rgba(17,17,17,.16);
           --accent: #7C1E1A;
-          --earth: #7C5C3A;
-          --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, "Cormorant Garamond", Garamond, serif;
-          --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+          --earth:  #7C5C3A;
+          --serif:  ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, "Cormorant Garamond", Garamond, serif;
+          --sans:   ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
         }
 
         @media (prefers-reduced-motion: reduce) {
-          * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+          *, *::before, *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        /* Hero grain drifts slowly — CSS only, respects prefers-reduced-motion above */
+        @keyframes grainDrift {
+          0%   { background-position: 0% 0%; }
+          25%  { background-position: 22% 38%; }
+          50%  { background-position: 48% 12%; }
+          75%  { background-position: 8% 55%; }
+          100% { background-position: 0% 0%; }
+        }
+
+        /* Modal entrance animations */
+        @keyframes modalOverlayIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes modalPanelIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Generic fade-in used by modal success state */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
       `}</style>
 
       <SkipLink />
 
-      {/* Top Nav */}
+      {/* Waitlist Modal */}
+      {activeChili ? (
+        <WaitlistModal chili={activeChili} onClose={() => setActiveChili(null)} />
+      ) : null}
+
+      {/* ── Top Nav ─────────────────────────────────────────────────────── */}
       <header
         className={cx(
           'sticky top-0 z-50 border-b backdrop-blur-md transition-[box-shadow,background-color] duration-300',
@@ -469,11 +659,13 @@ export default function Page() {
               ))}
             </div>
 
+            {/* CTA with accent dot */}
             <a
               href="#collection"
               className="inline-flex items-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_38px_rgba(0,0,0,0.10)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
               aria-label="See current harvest"
             >
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
               See Current Harvest
               <IconArrowRight className="h-4 w-4 opacity-70" />
             </a>
@@ -492,7 +684,7 @@ export default function Page() {
           </button>
         </nav>
 
-        {/* Mobile panel */}
+        {/* Mobile panel — height via grid-rows trick */}
         <div
           id="mobile-menu"
           className={cx(
@@ -528,6 +720,7 @@ export default function Page() {
                     className="mt-2 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                     aria-label="See current harvest"
                   >
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
                     See Current Harvest
                     <IconArrowRight className="h-4 w-4 opacity-70" />
                   </a>
@@ -539,7 +732,8 @@ export default function Page() {
       </header>
 
       <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Cinematic Hero */}
+
+        {/* ── Cinematic Hero ──────────────────────────────────────────────── */}
         <section aria-label="Hero" className="relative h-[88vh] min-h-[640px] w-full overflow-hidden">
           <video
             autoPlay
@@ -563,11 +757,17 @@ export default function Page() {
             }}
           />
 
+          {/* Animated grain overlay — drifts slowly, respects prefers-reduced-motion */}
           {!reduced ? (
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 opacity-60"
-              style={{ backgroundImage: noise, mixBlendMode: 'multiply' }}
+              style={{
+                backgroundImage: noise,
+                backgroundSize: '320px 320px',
+                mixBlendMode: 'multiply',
+                animation: 'grainDrift 12s linear infinite',
+              }}
             />
           ) : null}
 
@@ -576,11 +776,17 @@ export default function Page() {
               WHOLE PODS · HARVEST YEAR LABELED · NO ADDITIVES
             </p>
 
-            <h1 className="font-[var(--serif)] text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1
+              className="font-[var(--serif)] text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
+              style={{ textShadow: '0 2px 24px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.30)' }}
+            >
               Beyond Heat. Defined by Origin.
             </h1>
 
-            <div className="mt-6 max-w-2xl space-y-2 font-[var(--sans)] text-base leading-relaxed text-white/85 sm:text-lg">
+            <div
+              className="mt-6 max-w-2xl space-y-2 font-[var(--sans)] text-base leading-relaxed text-white/85 sm:text-lg"
+              style={{ textShadow: '0 1px 12px rgba(0,0,0,0.35)' }}
+            >
               <p>Single-origin whole dried chilies.</p>
               <p>Labeled by region, species, and harvest year.</p>
               <p>Each pod reflects soil, altitude, and drying method.</p>
@@ -594,7 +800,7 @@ export default function Page() {
           </div>
         </section>
 
-        {/* Origins */}
+        {/* ── Origins ─────────────────────────────────────────────────────── */}
         <Reveal delayMs={80}>
           <section aria-label="Origins section" className="py-12 sm:py-16" id="origins">
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
@@ -607,7 +813,7 @@ export default function Page() {
                   <p>We keep it visible.</p>
                 </div>
 
-                <p className="mt-7 text-xs uppercase tracking-[0.26em] text-[var(--muted)]">Place. Plant. Year.</p>
+                <p className="mt-7 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Place. Plant. Year.</p>
 
                 <p className="mt-6 font-[var(--serif)] text-sm leading-relaxed text-[color:color-mix(in_oklab,var(--ink)_85%,var(--earth))]">
                   Climate shapes sweetness.
@@ -649,7 +855,7 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* Species + Flavor Profile */}
+        {/* ── Species + Flavor Profile ─────────────────────────────────────── */}
         <Reveal delayMs={120}>
           <section aria-label="Species section" className="py-12 sm:py-16" id="species">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -732,7 +938,7 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* Process + Purity */}
+        {/* ── Process + Purity ─────────────────────────────────────────────── */}
         <Reveal delayMs={160}>
           <section aria-label="Process section" className="py-12 sm:py-16" id="process">
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
@@ -794,7 +1000,7 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* Current Harvest */}
+        {/* ── Current Harvest ──────────────────────────────────────────────── */}
         <Reveal delayMs={180}>
           <section aria-label="Collection" className="py-12 sm:py-16" id="collection">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -823,83 +1029,106 @@ export default function Page() {
 
             {/* Records grid */}
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURED_CHILIES.map((c) => {
-                const recordHref = `/collection/${slugify(c.name)}-${c.harvestYear}`;
-                return (
-                  <article
-                    key={c.name}
-                    className="group relative overflow-hidden rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)] active:translate-y-0"
-                    aria-label={`${c.name} record`}
-                  >
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-30 blur-2xl"
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 30%, rgba(124,30,26,.26), rgba(124,92,58,.14), transparent 70%)',
-                      }}
-                    />
+              {FEATURED_CHILIES.map((c) => (
+                <article
+                  key={c.name}
+                  className="group relative overflow-hidden rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)] active:translate-y-0"
+                  aria-label={`${c.name} record`}
+                >
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-30 blur-2xl"
+                    style={{
+                      background:
+                        'radial-gradient(circle at 30% 30%, rgba(124,30,26,.26), rgba(124,92,58,.14), transparent 70%)',
+                    }}
+                  />
 
-                    <header>
+                  <header>
+                    {/* Name + Available badge */}
+                    <div className="flex items-start justify-between gap-2">
                       <h3 className="font-[var(--serif)] text-2xl leading-tight">{c.name}</h3>
-
-                      <p className="mt-2 font-[var(--sans)] text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-                        {c.region}, {c.country}
-                      </p>
-                    </header>
-
-                    <dl className="mt-5 space-y-3 border-t border-[var(--hair)] pt-5">
-                      {c.archiveNo ? (
-                        <div className="flex items-start justify-between gap-4">
-                          <dt className="text-[10px] uppercase tracking-[0.26em] text-[var(--muted)]">ARCHIVE NO.</dt>
-                          <dd className="text-[11px] font-[var(--sans)] text-[var(--muted)]">{c.archiveNo}</dd>
-                        </div>
+                      {c.available ? (
+                        <span
+                          className="mt-1 shrink-0 rounded-full border border-[var(--hair)] px-2 py-0.5 text-[10px] uppercase tracking-[0.22em] text-[var(--accent)]"
+                          style={{ boxShadow: '0 0 12px rgba(124,30,26,0.15)' }}
+                        >
+                          Available
+                        </span>
                       ) : null}
-
-                      <div className="flex items-start justify-between gap-4">
-                        <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</dt>
-                        <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{c.species}</dd>
-                      </div>
-
-                      <div className="flex items-start justify-between gap-4">
-                        <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST</dt>
-                        <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{c.harvestYear}</dd>
-                      </div>
-                    </dl>
-
-                    <p className="mt-5 font-[var(--serif)] text-[15px] leading-relaxed text-[var(--ink)]">
-                      {c.notes.join(' · ')}
-                    </p>
-
-                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{c.drying}</p>
-
-                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Heat: {formatSHURange(c.heat.min, c.heat.max)} · {c.heat.descriptor}
-                    </p>
-
-                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Ideal for: {c.use}
-                    </p>
-
-                    <div className="mt-6">
-                      <RecordCTA
-                        href={recordHref}
-                        label="View Harvest Record"
-                        ariaLabel={`View harvest record for ${c.name} ${c.harvestYear}`}
-                      />
                     </div>
 
-                    <p className="mt-5 font-[var(--sans)] text-xs text-[var(--muted)]">
-                      Whole pods only. Grind as needed.
+                    <p className="mt-2 font-[var(--sans)] text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
+                      {c.region}, {c.country}
                     </p>
-                  </article>
-                );
-              })}
+                  </header>
+
+                  {/* Archive metadata block */}
+                  <dl className="mt-5 space-y-3 border-t border-[var(--hair)] pt-5">
+                    {c.archiveNo ? (
+                      <div className="flex items-start justify-between gap-4">
+                        <dt className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">ARCHIVE NO.</dt>
+                        <dd className="text-[11px] font-[var(--sans)] text-[var(--muted)]">{c.archiveNo}</dd>
+                      </div>
+                    ) : null}
+
+                    <div className="flex items-start justify-between gap-4">
+                      <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</dt>
+                      <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{c.species}</dd>
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4">
+                      <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST</dt>
+                      <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{c.harvestYear}</dd>
+                    </div>
+                  </dl>
+
+                  {/* Faint rule between archive metadata and tasting notes */}
+                  <hr className="my-4 border-[var(--faint)]" aria-hidden="true" />
+
+                  {/* Tasting notes — italic serif */}
+                  <p className="font-[var(--serif)] text-[15px] italic leading-relaxed text-[var(--ink)]">
+                    {c.notes.join(' · ')}
+                  </p>
+
+                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{c.drying}</p>
+
+                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                    Heat: {formatSHURange(c.heat.min, c.heat.max)} · {c.heat.descriptor}
+                  </p>
+
+                  <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
+                    Ideal for: {c.use}
+                  </p>
+
+                  <div className="mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setActiveChili(c)}
+                      aria-label={`View harvest record for ${c.name} ${c.harvestYear}`}
+                      className="inline-flex items-center gap-2 rounded outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
+                      style={{ color: '#8C1C1C' }}
+                    >
+                      <span
+                        className="text-sm underline underline-offset-4 transition-colors"
+                        style={{ textDecorationColor: 'rgba(17,17,17,.16)' }}
+                      >
+                        View Harvest Record
+                      </span>
+                      <IconArrowRight className="h-4 w-4 opacity-70" />
+                    </button>
+                  </div>
+
+                  <p className="mt-5 font-[var(--sans)] text-xs text-[var(--muted)]">
+                    Whole pods only. Grind as needed.
+                  </p>
+                </article>
+              ))}
             </div>
           </section>
         </Reveal>
 
-        {/* Journal */}
+        {/* ── Journal ──────────────────────────────────────────────────────── */}
         <Reveal delayMs={200}>
           <section aria-label="Journal" className="py-12 sm:py-16" id="journal">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -945,7 +1174,7 @@ export default function Page() {
                   <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{p.excerpt}</p>
                   <a
                     href={p.href}
-                    className="mt-6 inline-flex items-center gap-2 text-sm text-[var(--ink)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)] rounded"
+                    className="mt-6 inline-flex items-center gap-2 rounded text-sm text-[var(--ink)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
                     aria-label={`Read ${p.title}`}
                   >
                     Read
@@ -957,7 +1186,10 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* Closing + Email */}
+        {/* Decorative separator above About */}
+        <hr className="border-[var(--hair)]" aria-hidden="true" />
+
+        {/* ── Closing + Email ───────────────────────────────────────────────── */}
         <Reveal delayMs={220}>
           <section aria-label="Closing statement and signup" className="py-12 sm:py-16" id="about">
             <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
@@ -1025,15 +1257,16 @@ export default function Page() {
                       <p className="max-w-xl font-[var(--sans)] text-xs leading-relaxed text-[var(--muted)]">
                         Local-only for now. Later, connect via Cloudflare Worker / Pages Function.
                       </p>
+                      {/* Success state — fades in smoothly */}
                       <div
                         role="status"
                         aria-live="polite"
                         className={cx(
-                          'shrink-0 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_68%,white)] px-3 py-1 text-xs text-[var(--muted)] transition-opacity',
+                          'shrink-0 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_68%,white)] px-3 py-1 text-xs text-[var(--muted)] transition-[opacity] duration-500',
                           subscribed ? 'opacity-100' : 'opacity-0'
                         )}
                       >
-                        Subscribed (local)
+                        Noted. Thank you.
                       </div>
                     </div>
                   </form>
@@ -1043,7 +1276,7 @@ export default function Page() {
           </section>
         </Reveal>
 
-        {/* Footer */}
+        {/* ── Footer ───────────────────────────────────────────────────────── */}
         <footer aria-label="Footer" className="border-t border-[var(--hair)] py-10">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -1058,24 +1291,29 @@ export default function Page() {
                 <a
                   key={l.href}
                   href={l.href}
-                  className="text-sm text-[var(--muted)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:text-[var(--ink)] hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)] rounded"
+                  className="rounded text-sm text-[var(--muted)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:text-[var(--ink)] hover:decoration-[var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
                 >
                   {l.label}
                 </a>
               ))}
               <a
                 href="#main"
-                className="text-sm text-[var(--muted)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:text-[var(--ink)] hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)] rounded"
+                className="rounded text-sm text-[var(--muted)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:text-[var(--ink)] hover:decoration-[var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
               >
                 Back to top
               </a>
             </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
-              © {new Date().getFullYear()} CLUBA. Beyond Heat. Defined by Origin.
-            </p>
+          <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
+                © {new Date().getFullYear()} CLUBA. Beyond Heat. Defined by Origin.
+              </p>
+              <p className="mt-1 font-[var(--sans)] text-xs text-[var(--muted)]">
+                Whole pods. Named origins. Honest heat.
+              </p>
+            </div>
             <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
               WHOLE PODS · HARVEST YEAR LABELED · NO ADDITIVES
             </p>
