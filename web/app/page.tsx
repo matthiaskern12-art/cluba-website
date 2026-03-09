@@ -981,22 +981,22 @@ function OriginPanel({
   total: number;
   scrollYProgress: MotionValue<number>;
 }) {
-  const start = index / total;
-  const end = (index + 1) / total;
+  const OVERLAP = 0.04;
+  const segmentSize = 1 / total;
+  const start = index * segmentSize;
+  const end = (index + 1) * segmentSize;
   const isLast = index === total - 1;
 
   const opacity = useTransform(
     scrollYProgress,
     [
-      Math.max(0, start - 0.05),
-      start + 0.05,
-      isLast ? 0.85 : end - 0.05,
-      isLast ? 1.0 : end,
+      Math.max(0, start - OVERLAP),
+      Math.min(1, start + OVERLAP),
+      Math.max(0, end - OVERLAP),
+      Math.min(1, end),
     ],
     [0, 1, 1, isLast ? 1 : 0]
   );
-  const textY = useTransform(scrollYProgress, [start, end], ["8px", "-8px"]);
-  const imageY = useTransform(scrollYProgress, [start, end], ["0%", "-6%"]);
 
   return (
     <motion.div
@@ -1004,32 +1004,24 @@ function OriginPanel({
         opacity,
         position: "absolute",
         inset: 0,
-        display: "flex",
-        alignItems: "center",
+        zIndex: index,
       }}
-      aria-hidden={index !== 0}
     >
-      {/* Background image with parallax */}
-      <motion.div
+      {/* Background image */}
+      <div
         style={{
-          y: imageY,
           position: "absolute",
           inset: "-10% 0",
           zIndex: 0,
-          width: "100%",
-          height: "120%",
-          overflow: "hidden",
         }}
       >
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={origin.imagePath}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          style={{ objectFit: "cover", objectPosition: origin.objectPosition }}
+          alt={origin.imageAlt}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: origin.objectPosition }}
         />
-      </motion.div>
+      </div>
 
       {/* Dark overlay */}
       <div
@@ -1037,73 +1029,76 @@ function OriginPanel({
         style={{
           position: "absolute",
           inset: 0,
-          zIndex: 1,
+          zIndex: 10,
           background:
-            "linear-gradient(to right, rgba(14,10,6,0.92) 0%, rgba(14,10,6,0.88) 45%, rgba(14,10,6,0.25) 100%)",
+            "linear-gradient(to right, rgba(14,10,6,0.88) 45%, rgba(14,10,6,0.25) 100%)",
         }}
       />
 
       {/* Text content */}
-      <motion.div
+      <div
         style={{
-          y: textY,
-          position: "relative",
-          zIndex: 2,
-          maxWidth: "36rem",
+          position: "absolute",
+          inset: 0,
+          zIndex: 20,
+          display: "flex",
+          alignItems: "center",
           padding: "0 clamp(1.5rem, 8vw, 6rem)",
         }}
       >
-        <p
-          style={{
-            fontFamily: "var(--font-dm-sans)",
-            fontSize: "0.65rem",
-            letterSpacing: "0.22em",
-            textTransform: "uppercase",
-            color: "var(--muted)",
-          }}
-        >
-          {String(index + 1).padStart(2, "0")} — {origin.region} · {origin.elevation}
-        </p>
+        <div style={{ maxWidth: "36rem" }}>
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.65rem",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+            }}
+          >
+            {String(index + 1).padStart(2, "0")} — {origin.region} · {origin.elevation}
+          </p>
 
-        <h2
-          style={{
-            fontFamily: "var(--font-cormorant)",
-            fontWeight: 300,
-            fontSize: "clamp(3rem, 6vw, 5.5rem)",
-            color: "var(--paper)",
-            lineHeight: 1.05,
-            marginTop: "1rem",
-          }}
-        >
-          {origin.chili}
-        </h2>
+          <h2
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontWeight: 300,
+              fontSize: "clamp(3rem, 6vw, 5.5rem)",
+              color: "var(--paper)",
+              lineHeight: 1.05,
+              marginTop: "1rem",
+            }}
+          >
+            {origin.chili}
+          </h2>
 
-        <p
-          style={{
-            fontFamily: "var(--font-cormorant)",
-            fontWeight: 300,
-            fontSize: "clamp(1rem, 1.4vw, 1.2rem)",
-            color: "var(--panel-text)",
-            lineHeight: 1.8,
-            marginTop: "1.5rem",
-            maxWidth: "38ch",
-          }}
-        >
-          {origin.fieldNote}
-        </p>
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontWeight: 300,
+              fontSize: "clamp(1rem, 1.4vw, 1.2rem)",
+              color: "var(--panel-text)",
+              lineHeight: 1.8,
+              marginTop: "1.5rem",
+              maxWidth: "38ch",
+            }}
+          >
+            {origin.fieldNote}
+          </p>
 
-        <p
-          style={{
-            fontFamily: "var(--font-dm-sans)",
-            fontSize: "0.6rem",
-            letterSpacing: "0.18em",
-            color: "var(--muted)",
-            marginTop: "2.5rem",
-          }}
-        >
-          Archive № {origin.archiveNo}
-        </p>
-      </motion.div>
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.6rem",
+              letterSpacing: "0.18em",
+              color: "var(--muted)",
+              marginTop: "2.5rem",
+            }}
+          >
+            Archive № {origin.archiveNo}
+          </p>
+        </div>
+      </div>
     </motion.div>
   );
 }

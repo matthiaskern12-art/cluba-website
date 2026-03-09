@@ -5,7 +5,7 @@ type WaitlistKV = {
 };
 
 type Env = {
-  CLUBA_WAITLIST: WaitlistKV;
+  KV_BINDING: WaitlistKV;
 };
 
 type PagesContext<TEnv> = {
@@ -55,10 +55,10 @@ export const onRequestPost = async ({ request, env }: PagesContext<Env>) => {
     }
 
     const key = `waitlist:${email}`;
-    const existing = await env.CLUBA_WAITLIST.get(key);
+    const existing = await env.KV_BINDING.get(key);
 
     if (!existing) {
-      await env.CLUBA_WAITLIST.put(
+      await env.KV_BINDING.put(
         key,
         JSON.stringify({
           email,
