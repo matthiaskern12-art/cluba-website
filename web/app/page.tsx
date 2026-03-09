@@ -1,15 +1,18 @@
-'use client';
+"use client";
 
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from "framer-motion";
+import { useMediaQuery } from "./hooks/useMediaQuery";
 
-type NavLink = { label: string; href: string };
+/* ─── Types ──────────────────────────────────────────────────────────────── */
 
-type HeatRange = {
-  min: number;
-  max: number;
-  descriptor: string;
-};
+type HeatRange = { min: number; max: number; descriptor: string };
 
 type Chili = {
   name: string;
@@ -23,123 +26,148 @@ type Chili = {
   heat: HeatRange;
   archiveNo?: string;
   available?: boolean;
+  image: string;
 };
 
-type Post = { title: string; excerpt: string; date: string; href: string; tag: string };
+type OriginEntry = {
+  id: string;
+  chili: string;
+  region: string;
+  elevation: string;
+  archiveNo: string;
+  fieldNote: string;
+  imagePath: string;
+  imageAlt: string;
+  objectPosition: string;
+  accentColor: string;
+};
 
-const NAV_LINKS: NavLink[] = [
-  { label: 'Origins', href: '#origins' },
-  { label: 'Species', href: '#species' },
-  { label: 'Process', href: '#process' },
-  { label: 'Collection', href: '#collection' },
-  { label: 'Journal', href: '#journal' },
-  { label: 'About', href: '#about' },
-];
+/* ─── Data ───────────────────────────────────────────────────────────────── */
 
 const FEATURED_CHILIES: Chili[] = [
   {
-    name: 'Guajillo',
-    region: 'Oaxaca Highlands',
-    country: 'Mexico',
-    species: 'Capsicum annuum',
-    harvestYear: '2025',
-    notes: ['Dried cherry', 'Cocoa husk', 'Black tea'],
-    drying: 'Sun-dried for depth and clarity.',
-    use: 'Sauces, broths, slow braises',
-    heat: { min: 2500, max: 5000, descriptor: 'Gentle warmth' },
-    archiveNo: '2025–MX–OAX–GUA',
+    name: "Guajillo",
+    region: "Oaxaca Highlands",
+    country: "Mexico",
+    species: "Capsicum annuum",
+    harvestYear: "2025",
+    notes: ["Dried cherry", "Cocoa husk", "Black tea"],
+    drying: "Sun-dried for depth and clarity.",
+    use: "Sauces, broths, slow braises",
+    heat: { min: 2500, max: 5000, descriptor: "Gentle warmth" },
+    archiveNo: "2025–MX–OAX–GUA",
     available: true,
+    image: "/images/chilies/guajillo.png",
   },
   {
-    name: 'Ancho',
-    region: 'Puebla Highlands',
-    country: 'Mexico',
-    species: 'Capsicum annuum',
-    harvestYear: '2025',
-    notes: ['Raisin', 'Dark chocolate', 'Dried plum'],
-    drying: 'Slow sun-drying to concentrate natural sweetness.',
-    use: 'Moles, stews, braised vegetables',
-    heat: { min: 1000, max: 2000, descriptor: 'Mild warmth' },
-    archiveNo: '2025–MX–PUE–ANC',
+    name: "Ancho",
+    region: "Puebla Highlands",
+    country: "Mexico",
+    species: "Capsicum annuum",
+    harvestYear: "2025",
+    notes: ["Raisin", "Dark chocolate", "Dried plum"],
+    drying: "Slow sun-drying to concentrate natural sweetness.",
+    use: "Moles, stews, braised vegetables",
+    heat: { min: 1000, max: 2000, descriptor: "Mild warmth" },
+    archiveNo: "2025–MX–PUE–ANC",
     available: true,
+    image: "/images/chilies/ancho.png",
   },
   {
-    name: 'Chipotle',
-    region: 'Sierra Norte',
-    country: 'Mexico',
-    species: 'Capsicum annuum',
-    harvestYear: '2025',
-    notes: ['Wood smoke', 'Tamarind', 'Tobacco'],
-    drying: 'Traditionally smoked over wood for layered aroma.',
-    use: 'Beans, marinades, long-cooked sauces',
-    heat: { min: 2500, max: 8000, descriptor: 'Steady warmth' },
-    archiveNo: '2025–MX–SNO–CHP',
+    name: "Chipotle",
+    region: "Sierra Norte",
+    country: "Mexico",
+    species: "Capsicum annuum",
+    harvestYear: "2025",
+    notes: ["Wood smoke", "Tamarind", "Tobacco"],
+    drying: "Traditionally smoked over wood for layered aroma.",
+    use: "Beans, marinades, long-cooked sauces",
+    heat: { min: 2500, max: 8000, descriptor: "Steady warmth" },
+    archiveNo: "2025–MX–SNO–CHP",
+    image: "/images/chilies/chipotle.png",
   },
   {
-    name: 'Chile de Árbol',
-    region: 'Jalisco',
-    country: 'Mexico',
-    species: 'Capsicum annuum',
-    harvestYear: '2025',
-    notes: ['Bright red fruit', 'Clean spice', 'Structured heat'],
-    drying: 'Rapid sun-drying to preserve clarity.',
-    use: 'Salsas, chili oils, finishing heat',
-    heat: { min: 15000, max: 30000, descriptor: 'Direct heat' },
-    archiveNo: '2025–MX–JAL–ARB',
+    name: "Chile de Árbol",
+    region: "Jalisco",
+    country: "Mexico",
+    species: "Capsicum annuum",
+    harvestYear: "2025",
+    notes: ["Bright red fruit", "Clean spice", "Structured heat"],
+    drying: "Rapid sun-drying to preserve clarity.",
+    use: "Salsas, chili oils, finishing heat",
+    heat: { min: 15000, max: 30000, descriptor: "Direct heat" },
+    archiveNo: "2025–MX–JAL–ARB",
+    image: "/images/chilies/arbol.png",
   },
 ];
 
-const JOURNAL_POSTS: Post[] = [
+const ORIGINS: OriginEntry[] = [
   {
-    title: 'How to Taste a Whole Pod',
-    excerpt: 'Warm the skin between your palms. Crush lightly. Smell first. Flavor arrives before heat.',
-    date: '2026-02-06',
-    href: '#journal',
-    tag: 'Tasting',
+    id: "oaxaca",
+    chili: "Guajillo",
+    region: "Oaxaca Highlands",
+    elevation: "1,800m",
+    archiveNo: "2025–MX–OAX–GUA",
+    fieldNote:
+      "The guajillo hangs in clusters like dried coral. In the Oaxacan highlands, the air thins before noon and the pods take weeks to reach their final amber. What the altitude removes — moisture, softness — the fruit concentrates into something close to leather and distant from fire.",
+    imagePath: "/images/chilies/landscape-oaxaca.png",
+    imageAlt: "Oaxaca highlands chili fields at dusk",
+    objectPosition: "center 60%",
+    accentColor: "#8B3A2A",
   },
   {
-    title: 'Species and Flavor Structure',
-    excerpt:
-      'Different Capsicum species develop fruit differently. That changes aroma, sweetness, and heat behavior.',
-    date: '2026-01-22',
-    href: '#journal',
-    tag: 'Botany',
+    id: "puebla",
+    chili: "Ancho",
+    region: "Puebla Highlands",
+    elevation: "2,100m",
+    archiveNo: "2025–MX–PUE–ANC",
+    fieldNote:
+      "The ancho poblano begins as a poblano pepper — wide-shouldered, dark green, grown in the high valleys east of the volcano. Dried, it turns the color of aged mahogany and smells faintly of dried plum. The heat is low. The flavor is the point.",
+    imagePath: "/images/chilies/landscape-puebla.png",
+    imageAlt: "Puebla valley fields with Popocatépetl in distance",
+    objectPosition: "center 40%",
+    accentColor: "#5C3D1E",
   },
   {
-    title: 'Drying as Craft',
-    excerpt:
-      'Sun, shade, and occasional smoke. Drying is a translation step—done slowly to preserve volatile aromatics.',
-    date: '2025-12-18',
-    href: '#journal',
-    tag: 'Process',
+    id: "jalisco",
+    chili: "Chile de Árbol",
+    region: "Jalisco",
+    elevation: "1,400m",
+    archiveNo: "2025–MX–JAL–ARB",
+    fieldNote:
+      "Chile de árbol means 'tree chili' — the plant grows woody, upright, almost defiant. In Jalisco the pods dry on the branch before harvest. They arrive small, bright red, and carrying a clean, linear heat that builds without the smokiness of their cousins from the north.",
+    imagePath: "/images/chilies/landscape-jalisco.png",
+    imageAlt: "Jalisco highlands with árbol chili plants",
+    objectPosition: "center 50%",
+    accentColor: "#7A2B1A",
   },
 ];
 
-const SECTION_IMAGES = {
-  origin: {
-    src: '/images/origin-plate.png',
-    alt: 'Volcanic soil and terraced agriculture in soft natural light',
-    caption: 'Origin is disclosed. Climate and altitude shape flavor.',
+const PROCESSES = [
+  {
+    method: "Sun",
+    mark: "○",
+    description:
+      "Guajillo and árbol are laid on reed mats in direct highland sun. The drying takes 10–14 days. The skin pulls tight. The sugars concentrate without intervention.",
   },
-  species: {
-    src: '/images/species-plate.png',
-    alt: 'Botanical specimen style study of Capsicum plant detail on archival paper',
-    caption: 'Species is named. Aroma structure begins in the plant.',
+  {
+    method: "Shade",
+    mark: "◐",
+    description:
+      "The ancho dries slowly in covered sheds with open sides. Slower than sun, the texture stays supple. The flavor develops complexity that direct heat would burn away.",
   },
-  process: {
-    src: '/images/process-plate.png',
-    alt: 'Chili pods resting on a traditional drying rack in daylight',
-    caption: 'Drying is slow. Whole pods preserve volatile aromatics.',
+  {
+    method: "Smoke",
+    mark: "◎",
+    description:
+      "Chipotle is jalapeño held over pecan and mesquite smoke for days. The heat never leaves. The smoke becomes inseparable from the flesh. It arrives tasting like memory.",
   },
-  packaging: {
-    src: '/images/packaging-plate.png',
-    alt: 'Minimal matte tube packaging in soft daylight on an archival surface',
-    caption: 'Designed to protect aroma—and to be kept.',
-  },
-} as const;
+];
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
 
 function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ');
+  return classes.filter(Boolean).join(" ");
 }
 
 function formatSHURange(min: number, max: number) {
@@ -148,31 +176,29 @@ function formatSHURange(min: number, max: number) {
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
-
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const onChange = () => setReduced(!!mq.matches);
     onChange();
-    mq.addEventListener?.('change', onChange);
-    return () => mq.removeEventListener?.('change', onChange);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
   }, []);
-
   return reduced;
 }
 
 function useInView<T extends Element>(options?: IntersectionObserverInit) {
   const ref = useRef<T | null>(null);
   const [inView, setInView] = useState(false);
-
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-
-    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), options);
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      options
+    );
     io.observe(el);
     return () => io.disconnect();
   }, [options]);
-
   return { ref, inView };
 }
 
@@ -180,7 +206,7 @@ function Reveal({
   children,
   className,
   delayMs = 0,
-  threshold = 0.12,
+  threshold = 0.1,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -188,16 +214,20 @@ function Reveal({
   threshold?: number;
 }) {
   const reduced = usePrefersReducedMotion();
-  const options = useMemo<IntersectionObserverInit>(() => ({ threshold }), [threshold]);
+  const options = useMemo<IntersectionObserverInit>(
+    () => ({ threshold }),
+    [threshold]
+  );
   const { ref, inView } = useInView<HTMLDivElement>(options);
-
   return (
     <div
       ref={ref}
       className={cx(
-        'will-change-transform',
-        reduced ? 'opacity-100' : 'transition-[opacity,transform] duration-700 ease-out',
-        reduced ? '' : inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
+        "will-change-transform",
+        reduced
+          ? "opacity-100"
+          : "transition-[opacity,transform] duration-700 ease-out",
+        reduced ? "" : inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
         className
       )}
       style={!reduced ? { transitionDelay: `${delayMs}ms` } : undefined}
@@ -207,33 +237,7 @@ function Reveal({
   );
 }
 
-function useNoiseBackground() {
-  return useMemo(() => {
-    const svg = encodeURIComponent(`
-      <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-        <filter id="n">
-          <feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="3" stitchTiles="stitch"/>
-          <feColorMatrix type="matrix" values="
-            1 0 0 0 0
-            0 1 0 0 0
-            0 0 1 0 0
-            0 0 0 .10 0"/>
-        </filter>
-        <rect width="160" height="160" filter="url(#n)" opacity=".35"/>
-      </svg>
-    `);
-    return `url("data:image/svg+xml,${svg}")`;
-  }, []);
-}
-
-function formatDateISO(iso: string) {
-  const d = new Date(iso + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return iso;
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = d.toLocaleString(undefined, { month: 'short' });
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
-}
+/* ─── Icons ──────────────────────────────────────────────────────────────── */
 
 function IconArrowRight(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -248,141 +252,88 @@ function IconArrowRight(props: React.SVGProps<SVGSVGElement>) {
 
 function IconClose(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true" {...props}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+      {...props}
+    >
       <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   );
 }
 
+/* ─── Skip Link ──────────────────────────────────────────────────────────── */
+
 function SkipLink() {
   return (
     <a
       href="#main"
-      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-full focus:bg-[var(--paper)] focus:px-4 focus:py-2 focus:text-sm focus:shadow-[0_10px_30px_rgba(0,0,0,0.15)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+      className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-full focus:px-4 focus:py-2 focus:text-sm focus:shadow-lg focus:outline-none focus:ring-2"
+      style={{
+        background: "var(--paper)",
+        color: "var(--ink)",
+      }}
     >
       Skip to content
     </a>
   );
 }
 
-function SectionFigure({
-  src,
-  alt,
-  caption,
-  aspectClass = 'aspect-[16/10]',
-  priority = false,
-}: {
-  src: string;
-  alt: string;
-  caption?: string;
-  aspectClass?: string;
-  priority?: boolean;
-}) {
-  return (
-    <figure className="overflow-hidden rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)]">
-      <div className={cx('relative w-full', aspectClass)}>
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes="(min-width: 1024px) 52vw, 100vw"
-          className="object-cover"
-          priority={priority}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/20" />
-      </div>
-      {caption ? (
-        <figcaption className="px-5 py-4 font-[var(--sans)] text-xs text-[var(--muted)]">
-          {caption}
-        </figcaption>
-      ) : null}
-    </figure>
-  );
-}
-
-function HeroCTA({
-  href,
-  label,
-  variant = 'primary',
-}: {
-  href: string;
-  label: string;
-  variant?: 'primary' | 'secondary';
-}) {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm transition-[transform,background-color,border-color,box-shadow] duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-white/90';
-
-  if (variant === 'primary') {
-    return (
-      <a
-        href={href}
-        className={cx(
-          base,
-          'border border-white/35 bg-white/12 text-white shadow-[0_18px_60px_rgba(0,0,0,0.18)] hover:bg-white/16'
-        )}
-      >
-        {label}
-        <IconArrowRight className="h-4 w-4 opacity-75" />
-      </a>
-    );
-  }
-
-  return (
-    <a
-      href={href}
-      className={cx(base, 'border border-white/28 bg-transparent text-white/90 hover:bg-white/10')}
-    >
-      {label}
-    </a>
-  );
-}
-
-/* ─── Waitlist Modal ──────────────────────────────────────────────────────── */
+/* ─── Waitlist Modal ─────────────────────────────────────────────────────── */
 
 function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const emailId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
 
-  // Escape key closes modal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Focus trap — re-runs when submitted changes (focusable set changes)
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
-    const sel = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const sel =
+      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
     const focusable = Array.from(panel.querySelectorAll<HTMLElement>(sel));
     focusable[0]?.focus();
-
     const onTab = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
+      if (e.key !== "Tab") return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     };
-    document.addEventListener('keydown', onTab);
-    return () => document.removeEventListener('keydown', onTab);
+    document.addEventListener("keydown", onTab);
+    return () => document.removeEventListener("keydown", onTab);
   }, [submitted]);
 
-  // Lock body scroll while open
   useEffect(() => {
     const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -390,18 +341,18 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
     const value = email.trim();
     if (!value) return;
     try {
-      await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+      await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           email: value,
-          source: 'collection-modal',
+          source: "collection-modal",
           chili: chili.name,
           archiveNo: chili.archiveNo,
         }),
       });
     } catch {
-      // graceful — show success regardless of network
+      // show success regardless
     }
     setSubmitted(true);
   }
@@ -413,74 +364,113 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
       aria-modal="true"
       aria-labelledby="modal-title"
       className="fixed inset-0 z-[200] flex items-end justify-center p-4 sm:items-center"
-      style={{ animation: reduced ? 'none' : 'modalOverlayIn 200ms ease-out both' }}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      style={{
+        animation: reduced ? "none" : "modalOverlayIn 200ms ease-out both",
+      }}
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onClose();
+      }}
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
-
-      {/* Panel */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
       <div
         ref={panelRef}
-        className="relative z-10 w-full max-w-md rounded-3xl border border-[var(--hair)] bg-[var(--paper)] p-6 shadow-[0_32px_80px_rgba(0,0,0,0.22)] sm:p-8"
-        style={{ animation: reduced ? 'none' : 'modalPanelIn 250ms ease-out both' }}
+        className="relative z-10 w-full max-w-md rounded-3xl p-6 shadow-2xl sm:p-8"
+        style={{
+          background: "var(--paper)",
+          border: "1px solid var(--hair)",
+          animation: reduced ? "none" : "modalPanelIn 250ms ease-out both",
+        }}
       >
-        {/* Close */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--hair)] text-[var(--muted)] transition-colors hover:text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+          style={{
+            border: "1px solid var(--hair)",
+            color: "var(--muted)",
+          }}
         >
           <IconClose className="h-4 w-4" />
         </button>
 
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST RECORD</p>
-        <h2 id="modal-title" className="mt-2 font-[var(--serif)] text-2xl">{chili.name}</h2>
-        <p className="mt-1 font-[var(--sans)] text-sm text-[var(--muted)]">
+        <p
+          className="text-xs uppercase tracking-[0.22em]"
+          style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}
+        >
+          Harvest Record
+        </p>
+        <h2
+          id="modal-title"
+          className="mt-2 text-2xl"
+          style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}
+        >
+          {chili.name}
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
           {chili.region}, {chili.country}
         </p>
 
-        <dl className="mt-5 space-y-2 border-t border-[var(--hair)] pt-5">
-          {chili.archiveNo ? (
+        <dl className="mt-5 space-y-2 border-t pt-5" style={{ borderColor: "var(--hair)" }}>
+          {chili.archiveNo && (
             <div className="flex justify-between gap-4">
-              <dt className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">ARCHIVE NO.</dt>
-              <dd className="text-xs font-[var(--sans)] text-[var(--muted)]">{chili.archiveNo}</dd>
+              <dt className="text-[10px] uppercase tracking-[0.22em]" style={{ color: "var(--muted)" }}>
+                Archive No.
+              </dt>
+              <dd className="text-xs" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
+                {chili.archiveNo}
+              </dd>
             </div>
-          ) : null}
+          )}
           <div className="flex justify-between gap-4">
-            <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</dt>
-            <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{chili.species}</dd>
+            <dt className="text-xs uppercase tracking-[0.22em]" style={{ color: "var(--muted)" }}>
+              Species
+            </dt>
+            <dd className="text-sm italic" style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}>
+              {chili.species}
+            </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST</dt>
-            <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{chili.harvestYear}</dd>
+            <dt className="text-xs uppercase tracking-[0.22em]" style={{ color: "var(--muted)" }}>
+              Harvest
+            </dt>
+            <dd className="text-sm" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--ink)" }}>
+              {chili.harvestYear}
+            </dd>
           </div>
         </dl>
 
-        <p className="mt-5 font-[var(--serif)] text-sm italic text-[var(--ink)]">
-          {chili.notes.join(' · ')}
+        <p className="mt-5 text-sm italic" style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}>
+          {chili.notes.join(" · ")}
         </p>
-        <p className="mt-2 font-[var(--sans)] text-xs text-[var(--muted)]">
+        <p className="mt-2 text-xs" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
           Heat: {formatSHURange(chili.heat.min, chili.heat.max)} · {chili.heat.descriptor}
         </p>
 
         {submitted ? (
           <div
-            className="mt-6 rounded-2xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] px-5 py-4 text-center"
-            style={{ animation: 'fadeIn 300ms ease-out both' }}
+            className="mt-6 rounded-2xl px-5 py-4 text-center"
+            style={{
+              background: "var(--faint)",
+              border: "1px solid var(--hair)",
+              animation: "fadeIn 300ms ease-out both",
+            }}
           >
-            <p className="font-[var(--serif)] text-lg">Noted. Thank you.</p>
-            <p className="mt-1 font-[var(--sans)] text-xs text-[var(--muted)]">
+            <p className="text-lg" style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}>
+              Noted. Thank you.
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
               We'll reach out when this harvest is ready.
             </p>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="mt-6" aria-label="Waitlist form">
-            <p className="font-[var(--sans)] text-sm text-[var(--muted)]">
+            <p className="text-sm" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
               Join the waitlist for this harvest.
             </p>
-            <label htmlFor={emailId} className="sr-only">Email</label>
+            <label htmlFor={emailId} className="sr-only">
+              Email
+            </label>
             <div className="mt-3 flex flex-col gap-3">
               <input
                 id={emailId}
@@ -491,11 +481,22 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
                 placeholder="you@domain.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-2xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_72%,white)] px-4 py-3 font-[var(--sans)] text-sm text-[var(--ink)] outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="w-full rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2"
+                style={{
+                  border: "1px solid var(--hair)",
+                  background: "var(--faint)",
+                  color: "var(--ink)",
+                  fontFamily: "var(--font-dm-sans)",
+                }}
               />
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--ink)] px-5 py-3 text-sm text-[var(--paper)] shadow-[0_14px_40px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm shadow-lg transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2"
+                style={{
+                  background: "var(--ink)",
+                  color: "var(--paper)",
+                  fontFamily: "var(--font-dm-sans)",
+                }}
               >
                 Reserve my place
                 <IconArrowRight className="h-4 w-4 opacity-80" />
@@ -508,818 +509,1312 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
   );
 }
 
-/* ─── Page ────────────────────────────────────────────────────────────────── */
+/* ─── Chili Card ─────────────────────────────────────────────────────────── */
 
-export default function Page() {
-  const noise = useNoiseBackground();
-  const reduced = usePrefersReducedMotion();
+function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili) => void }) {
+  const [imgError, setImgError] = useState(false);
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  return (
+    <article
+      className="overflow-hidden rounded-3xl"
+      style={{ border: "1px solid var(--hair)" }}
+    >
+      <div
+        className="relative h-[280px] overflow-hidden"
+        style={{ background: "color-mix(in oklab, var(--paper) 78%, var(--earth))" }}
+      >
+        {!imgError && (
+          <Image
+            src={chili.image}
+            alt={`${chili.name} dried chili pods`}
+            fill
+            className="object-cover object-center"
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+            onError={() => setImgError(true)}
+          />
+        )}
+        {chili.available && (
+          <span
+            className="absolute right-3 top-3 text-[9px] uppercase"
+            style={{
+              background: "#1A3D22",
+              color: "#4CAF72",
+              letterSpacing: "0.2em",
+              padding: "3px 8px",
+            }}
+          >
+            Available
+          </span>
+        )}
+      </div>
 
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-  const emailId = useId();
+      <div className="border-t p-6" style={{ borderColor: "var(--hair)", background: "var(--paper)" }}>
+        <div className="flex items-baseline justify-between gap-2">
+          <h3
+            className="text-xl leading-tight"
+            style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}
+          >
+            {chili.name}
+          </h3>
+          <span className="shrink-0 font-mono text-[10px]" style={{ color: "var(--muted)" }}>
+            {chili.harvestYear}
+          </span>
+        </div>
 
-  const [activeChili, setActiveChili] = useState<Chili | null>(null);
+        <p
+          className="mt-1 text-[10px] uppercase"
+          style={{ letterSpacing: "0.12em", color: "var(--muted)", marginBottom: "14px", fontFamily: "var(--font-dm-sans)" }}
+        >
+          {chili.region}, {chili.country}
+        </p>
+
+        <div className="flex flex-wrap gap-1.5" style={{ marginBottom: "14px" }}>
+          {chili.notes.map((note) => (
+            <span
+              key={note}
+              className="italic"
+              style={{
+                background: "var(--faint)",
+                color: "var(--earth)",
+                fontFamily: "var(--font-cormorant)",
+                fontSize: "10px",
+                padding: "3px 8px",
+              }}
+            >
+              {note}
+            </span>
+          ))}
+        </div>
+
+        <p
+          className="text-[11px] leading-relaxed"
+          style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)", marginBottom: "14px" }}
+        >
+          {chili.drying}
+        </p>
+
+        <hr style={{ borderColor: "var(--hair)", marginBottom: "14px" }} aria-hidden="true" />
+
+        <div className="flex justify-between gap-2" style={{ marginBottom: "6px" }}>
+          <span
+            className="uppercase"
+            style={{ fontSize: "9px", letterSpacing: "0.15em", color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}
+          >
+            Heat
+          </span>
+          <span
+            className="text-right"
+            style={{ fontSize: "9px", color: "var(--ink)", fontFamily: "var(--font-dm-sans)" }}
+          >
+            {formatSHURange(chili.heat.min, chili.heat.max)} · {chili.heat.descriptor}
+          </span>
+        </div>
+
+        <div className="flex justify-between gap-2" style={{ marginBottom: "6px" }}>
+          <span
+            className="uppercase"
+            style={{ fontSize: "9px", letterSpacing: "0.15em", color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}
+          >
+            Ideal for
+          </span>
+          <span
+            className="text-right"
+            style={{ fontSize: "9px", color: "var(--ink)", fontFamily: "var(--font-dm-sans)" }}
+          >
+            {chili.use}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onWaitlist(chili)}
+          aria-label={chili.available ? `Reserve ${chili.name} harvest` : `Join waitlist for ${chili.name}`}
+          className="mt-4 w-full transition-opacity hover:opacity-80 focus:outline-none focus:ring-2"
+          style={{
+            background: chili.available ? "var(--ink)" : "transparent",
+            border: chili.available ? "none" : "1px solid var(--hair)",
+            color: chili.available ? "var(--paper)" : "var(--muted)",
+            fontSize: "9px",
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            padding: "10px",
+            fontFamily: "var(--font-dm-sans)",
+          }}
+        >
+          {chili.available ? "Reserve this harvest" : "Join waitlist"}
+        </button>
+
+        {chili.archiveNo && (
+          <p
+            className="mt-3 text-center"
+            style={{ fontFamily: "monospace", fontSize: "9px", letterSpacing: "0.1em", color: "var(--muted)" }}
+          >
+            {chili.archiveNo}
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/* ─── Chili Carousel ─────────────────────────────────────────────────────── */
+
+function ChiliCarousel({
+  chilies,
+  onWaitlist,
+}: {
+  chilies: Chili[];
+  onWaitlist: (c: Chili) => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(3);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    function updateVisible() {
+      const w = window.innerWidth;
+      setVisibleCount(w >= 1024 ? 3 : w >= 640 ? 2 : 1);
+    }
+    updateVisible();
+    window.addEventListener("resize", updateVisible);
+    return () => window.removeEventListener("resize", updateVisible);
   }, []);
 
-  async function onSubmitEmail(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const value = email.trim();
-    if (!value) return;
+  const total = chilies.length;
+  const maxIndex = Math.max(0, total - visibleCount);
 
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: value, source: 'homepage' }),
-      });
+  useEffect(() => {
+    setCurrentIndex((i) => Math.min(i, maxIndex));
+  }, [maxIndex]);
 
-      if (!res.ok) throw new Error('Request failed');
+  const trackWidthPct = (total / visibleCount) * 100;
+  const translatePct = (currentIndex / total) * 100;
 
-      setSubscribed(true);
-      setEmail('');
-      window.setTimeout(() => setSubscribed(false), 2200);
-    } catch {
-      setSubscribed(false);
-    }
-  }
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+          aria-label="Previous"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2"
+          style={{
+            border: "1px solid var(--hair)",
+            color: "var(--muted)",
+            opacity: currentIndex === 0 ? 0.25 : 1,
+            pointerEvents: currentIndex === 0 ? "none" : "auto",
+          }}
+        >
+          ←
+        </button>
+
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div
+            className="flex transition-transform duration-[400ms] ease-out"
+            style={{
+              width: `${trackWidthPct}%`,
+              transform: `translateX(-${translatePct}%)`,
+            }}
+          >
+            {chilies.map((chili) => (
+              <div
+                key={chili.name}
+                className="px-3"
+                style={{ width: `${100 / total}%` }}
+              >
+                <ChiliCard chili={chili} onWaitlist={onWaitlist} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setCurrentIndex((i) => Math.min(maxIndex, i + 1))}
+          aria-label="Next"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2"
+          style={{
+            border: "1px solid var(--hair)",
+            color: "var(--muted)",
+            opacity: currentIndex >= maxIndex ? 0.25 : 1,
+            pointerEvents: currentIndex >= maxIndex ? "none" : "auto",
+          }}
+        >
+          →
+        </button>
+      </div>
+
+      <div className="mt-6 flex justify-center gap-2">
+        {chilies.map((chili, i) => (
+          <button
+            key={chili.name}
+            type="button"
+            onClick={() => setCurrentIndex(Math.min(i, maxIndex))}
+            aria-label={`Go to ${chili.name}`}
+            aria-current={i === currentIndex}
+            className="focus:outline-none focus:ring-2"
+            style={{
+              height: "2px",
+              borderRadius: "1px",
+              width: i === currentIndex ? "20px" : "8px",
+              background: i === currentIndex ? "var(--ink)" : "var(--hair)",
+              transition: "width 0.3s ease, background 0.3s ease",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Topographic SVG ────────────────────────────────────────────────────── */
+
+function TopoSVG() {
+  return (
+    <svg
+      viewBox="0 0 1920 1080"
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid slice"
+      style={{ width: "100%", height: "100%" }}
+      aria-hidden="true"
+    >
+      <g fill="none" stroke="var(--panel-text)" strokeWidth="0.8">
+        {/* Central highland peak */}
+        <path d="M960,500 C1010,482 1065,478 1100,498 C1135,518 1142,550 1122,574 C1102,598 1058,610 1005,607 C952,604 908,587 890,560 C872,533 878,506 912,495 C930,489 946,495 960,500Z" />
+        <path d="M960,465 C1038,440 1115,435 1162,464 C1209,493 1218,540 1192,578 C1166,616 1104,638 1030,636 C956,634 895,614 860,576 C825,538 828,492 866,468 C888,455 925,460 960,465Z" />
+        <path d="M960,425 C1068,393 1168,386 1228,424 C1288,462 1300,520 1268,570 C1236,620 1158,650 1062,650 C966,650 882,624 836,572 C790,520 792,456 836,422 C862,404 912,416 960,425Z" />
+        <path d="M960,380 C1100,340 1224,332 1298,378 C1372,424 1388,494 1350,556 C1312,618 1218,656 1102,658 C986,660 880,632 822,568 C764,504 764,428 812,384 C840,362 900,370 960,380Z" />
+        <path d="M960,330 C1132,282 1282,272 1370,328 C1458,384 1478,468 1434,545 C1390,622 1278,668 1140,672 C1002,676 878,644 806,564 C734,484 732,390 786,336 C818,308 888,318 960,330Z" />
+        <path d="M960,276 C1166,220 1342,208 1444,274 C1546,340 1570,440 1520,530 C1470,620 1342,676 1180,682 C1018,688 876,652 790,558 C704,464 700,352 760,286 C796,252 878,258 960,276Z" />
+        <path d="M960,216 C1200,152 1404,138 1520,216 C1636,294 1664,412 1606,516 C1548,620 1406,686 1220,694 C1034,702 874,660 774,550 C674,440 668,314 734,234 C774,194 866,196 960,216Z" />
+        <path d="M960,150 C1234,78 1468,62 1598,152 C1728,242 1760,380 1694,500 C1628,620 1470,698 1260,708 C1050,718 872,668 758,540 C644,412 636,270 708,178 C752,126 854,118 960,150Z" />
+        <path d="M960,78 C1268,0 1534,-18 1678,86 C1822,190 1858,350 1784,486 C1710,622 1534,712 1300,724 C1066,736 870,678 740,528 C610,378 600,222 680,118 C728,54 842,30 960,78Z" />
+
+        {/* Secondary ridge — lower left */}
+        <path d="M280,720 C318,706 356,708 378,726 C400,744 400,772 380,790 C360,808 326,812 298,798 C270,784 254,758 260,736 C266,720 268,720 280,720Z" />
+        <path d="M280,688 C332,668 384,670 414,694 C444,718 446,756 420,784 C394,812 344,824 302,810 C260,796 232,760 238,728 C244,704 262,692 280,688Z" />
+        <path d="M280,652 C348,625 412,626 452,656 C492,686 494,736 464,772 C434,808 370,824 314,810 C258,796 222,752 228,710 C234,676 260,658 280,652Z" />
+        <path d="M280,614 C366,580 444,580 494,618 C544,656 546,718 510,762 C474,806 396,828 326,812 C256,796 210,742 216,690 C222,648 254,622 280,614Z" />
+
+        {/* Distant eastern range */}
+        <path d="M1680,200 C1730,188 1784,192 1820,216 C1856,240 1860,278 1836,306 C1812,334 1762,344 1714,330 C1666,316 1638,284 1646,252 C1652,230 1666,208 1680,200Z" />
+        <path d="M1680,162 C1756,144 1836,148 1888,180 C1940,212 1946,264 1916,304 C1886,344 1820,364 1748,350 C1676,336 1628,292 1636,246 C1642,214 1660,174 1680,162Z" />
+      </g>
+    </svg>
+  );
+}
+
+/* ─── Floating Nav ───────────────────────────────────────────────────────── */
+
+function FloatingNav({ scrolled }: { scrolled: boolean }) {
+  return (
+    <nav
+      aria-label="Site navigation"
+      className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-6 py-4 transition-all duration-300 sm:px-10"
+      style={{
+        background: scrolled ? "rgba(14,10,6,0.92)" : "transparent",
+        backdropFilter: scrolled ? "blur(12px)" : "none",
+        borderBottom: scrolled ? "1px solid rgba(212,196,168,0.08)" : "none",
+      }}
+    >
+      <a
+        href="#"
+        className="uppercase tracking-[0.22em] text-sm transition-opacity hover:opacity-70"
+        style={{ fontFamily: "var(--font-cormorant)", color: "var(--paper)", textDecoration: "none" }}
+      >
+        CLUBA
+      </a>
+      <div className="flex items-center gap-6 sm:gap-8">
+        <a
+          href="#collection"
+          className="hidden text-[0.65rem] uppercase tracking-[0.15em] transition-opacity hover:opacity-100 sm:block"
+          style={{ color: "rgba(232,221,208,0.55)", fontFamily: "var(--font-dm-sans)", textDecoration: "none" }}
+        >
+          Collection
+        </a>
+        <a
+          href="#process"
+          className="hidden text-[0.65rem] uppercase tracking-[0.15em] transition-opacity hover:opacity-100 sm:block"
+          style={{ color: "rgba(232,221,208,0.55)", fontFamily: "var(--font-dm-sans)", textDecoration: "none" }}
+        >
+          Process
+        </a>
+        <a
+          href="#waitlist-earned"
+          className="rounded-sm px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.15em] transition-colors duration-200"
+          style={{
+            background: "var(--accent)",
+            color: "var(--paper)",
+            fontFamily: "var(--font-dm-sans)",
+            textDecoration: "none",
+          }}
+        >
+          Reserve
+        </a>
+      </div>
+    </nav>
+  );
+}
+
+/* ─── Section 1: Hero ────────────────────────────────────────────────────── */
+
+function HeroSection() {
+  const reduced = usePrefersReducedMotion();
+  const isMobile = useMediaQuery("(max-width: 767px)");
+
+  return (
+    <section
+      id="hero"
+      style={{
+        background: "var(--void)",
+        height: "100svh",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* Topographic SVG — drifts slowly; disabled on mobile */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: "-10% -5%",
+          zIndex: 0,
+          opacity: isMobile ? 0.02 : 0.04,
+          animation: (reduced || isMobile) ? "none" : "topoShift 20s ease-in-out infinite alternate",
+        }}
+      >
+        <TopoSVG />
+      </div>
+
+      {/* Content */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          textAlign: "center",
+          padding: "0 2rem",
+        }}
+      >
+        <motion.h1
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.8, ease: "easeOut" }}
+          style={{
+            fontFamily: "var(--font-cormorant)",
+            fontWeight: 300,
+            fontSize: "clamp(4.5rem, 12vw, 10rem)",
+            letterSpacing: "0.22em",
+            color: "var(--paper)",
+            lineHeight: 1,
+            margin: 0,
+          }}
+        >
+          CLUBA
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2, delay: 0.7, ease: "easeOut" }}
+          style={{
+            fontFamily: "var(--font-dm-sans)",
+            fontWeight: 300,
+            fontSize: "clamp(0.7rem, 1.5vw, 0.9rem)",
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            color: "var(--muted)",
+            marginTop: "2rem",
+          }}
+        >
+          Beyond Heat. Defined by Origin.
+        </motion.p>
+      </div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.3 }}
+        transition={{ delay: 2.2, duration: 1 }}
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          bottom: "2.5rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          color: "var(--panel-text)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "0.55rem",
+            letterSpacing: "0.25em",
+            textTransform: "uppercase",
+          }}
+        >
+          Scroll
+        </span>
+        <svg width="1" height="40" viewBox="0 0 1 40">
+          <line x1="0.5" y1="0" x2="0.5" y2="40" stroke="currentColor" strokeWidth="1" />
+        </svg>
+      </motion.div>
+    </section>
+  );
+}
+
+/* ─── Section 2: Origin Sequence ─────────────────────────────────────────── */
+
+function OriginPanel({
+  origin,
+  index,
+  total,
+  scrollYProgress,
+}: {
+  origin: OriginEntry;
+  index: number;
+  total: number;
+  scrollYProgress: MotionValue<number>;
+}) {
+  const start = index / total;
+  const end = (index + 1) / total;
+  const isLast = index === total - 1;
+
+  const opacity = useTransform(
+    scrollYProgress,
+    [
+      Math.max(0, start - 0.05),
+      start + 0.05,
+      isLast ? 0.85 : end - 0.05,
+      isLast ? 1.0 : end,
+    ],
+    [0, 1, 1, isLast ? 1 : 0]
+  );
+  const textY = useTransform(scrollYProgress, [start, end], ["8px", "-8px"]);
+  const imageY = useTransform(scrollYProgress, [start, end], ["0%", "-6%"]);
+
+  return (
+    <motion.div
+      style={{
+        opacity,
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        alignItems: "center",
+      }}
+      aria-hidden={index !== 0}
+    >
+      {/* Background image with parallax */}
+      <motion.div
+        style={{
+          y: imageY,
+          position: "absolute",
+          inset: "-10% 0",
+          zIndex: 0,
+          width: "100%",
+          height: "120%",
+          overflow: "hidden",
+        }}
+      >
+        <Image
+          src={origin.imagePath}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover", objectPosition: origin.objectPosition }}
+        />
+      </motion.div>
+
+      {/* Dark overlay */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1,
+          background:
+            "linear-gradient(to right, rgba(14,10,6,0.92) 0%, rgba(14,10,6,0.88) 45%, rgba(14,10,6,0.25) 100%)",
+        }}
+      />
+
+      {/* Text content */}
+      <motion.div
+        style={{
+          y: textY,
+          position: "relative",
+          zIndex: 2,
+          maxWidth: "36rem",
+          padding: "0 clamp(1.5rem, 8vw, 6rem)",
+        }}
+      >
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "0.65rem",
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: "var(--muted)",
+          }}
+        >
+          {String(index + 1).padStart(2, "0")} — {origin.region} · {origin.elevation}
+        </p>
+
+        <h2
+          style={{
+            fontFamily: "var(--font-cormorant)",
+            fontWeight: 300,
+            fontSize: "clamp(3rem, 6vw, 5.5rem)",
+            color: "var(--paper)",
+            lineHeight: 1.05,
+            marginTop: "1rem",
+          }}
+        >
+          {origin.chili}
+        </h2>
+
+        <p
+          style={{
+            fontFamily: "var(--font-cormorant)",
+            fontWeight: 300,
+            fontSize: "clamp(1rem, 1.4vw, 1.2rem)",
+            color: "var(--panel-text)",
+            lineHeight: 1.8,
+            marginTop: "1.5rem",
+            maxWidth: "38ch",
+          }}
+        >
+          {origin.fieldNote}
+        </p>
+
+        <p
+          style={{
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "0.6rem",
+            letterSpacing: "0.18em",
+            color: "var(--muted)",
+            marginTop: "2.5rem",
+          }}
+        >
+          Archive № {origin.archiveNo}
+        </p>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─── Mobile origin panels ───────────────────────────────────────────────── */
+
+function MobileOriginPanel({ origin, index }: { origin: OriginEntry; index: number }) {
+  return (
+    <div style={{ minHeight: "100svh", display: "flex", flexDirection: "column", background: "var(--deep)" }}>
+      {/* Image — top half */}
+      <div style={{ position: "relative", height: "55vw", minHeight: "240px", flexShrink: 0 }}>
+        <Image
+          src={origin.imagePath}
+          alt={origin.imageAlt}
+          fill
+          loading="eager"
+          sizes="100vw"
+          style={{ objectFit: "cover", objectPosition: origin.objectPosition }}
+        />
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to bottom, rgba(14,10,6,0.2) 0%, rgba(14,10,6,0.92) 100%)",
+          }}
+        />
+      </div>
+
+      {/* Text — bottom half */}
+      <div style={{ padding: "1.5rem 1.75rem 3rem", flex: 1 }}>
+        <p style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)", fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+          {String(index + 1).padStart(2, "0")} — {origin.region} · {origin.elevation}
+        </p>
+        <h2 style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300, fontSize: "clamp(2.5rem, 12vw, 3.5rem)", color: "var(--paper)", lineHeight: 1.05, marginTop: "0.75rem" }}>
+          {origin.chili}
+        </h2>
+        <p style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300, fontSize: "1.1rem", color: "var(--panel-text)", lineHeight: 1.8, marginTop: "1.25rem" }}>
+          {origin.fieldNote}
+        </p>
+        <p style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)", fontSize: "0.6rem", letterSpacing: "0.18em", marginTop: "1.75rem" }}>
+          Archive № {origin.archiveNo}
+        </p>
+      </div>
+
+      {/* Divider between panels */}
+      {index < ORIGINS.length - 1 && (
+        <div aria-hidden="true" style={{ height: "1px", background: "rgba(212,196,168,0.12)", margin: "0 1.75rem" }} />
+      )}
+    </div>
+  );
+}
+
+function OriginSequenceMobile() {
+  return (
+    <div style={{ background: "var(--deep)" }}>
+      {ORIGINS.map((origin, i) => (
+        <MobileOriginPanel key={origin.id} origin={origin} index={i} />
+      ))}
+    </div>
+  );
+}
+
+function OriginSequenceDesktop() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
 
   return (
     <div
-      className="min-h-screen bg-[var(--paper)] text-[var(--ink)] selection:bg-[color:color-mix(in_oklab,var(--accent)_20%,transparent)] selection:text-[var(--ink)] scroll-smooth"
-      style={{
-        backgroundImage:
-          'radial-gradient(1200px 800px at 15% 0%, rgba(124, 92, 58, 0.10), transparent 55%), radial-gradient(900px 700px at 85% 18%, rgba(124, 30, 26, 0.09), transparent 60%)',
-      }}
+      ref={containerRef}
+      style={{ height: `${(ORIGINS.length + 1) * 100}vh`, position: "relative" }}
     >
-      <style>{`
-        :root {
-          --paper:  #F6F1E7;
-          --ink:    #111111;
-          --muted:  rgba(17,17,17,.70);
-          --faint:  rgba(17,17,17,.12);
-          --hair:   rgba(17,17,17,.16);
-          --accent: #7C1E1A;
-          --earth:  #7C5C3A;
-          --serif:  ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, "Cormorant Garamond", Garamond, serif;
-          --sans:   ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            animation-duration: 0.001ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.001ms !important;
-            scroll-behavior: auto !important;
-          }
-        }
-
-        /* Hero grain drifts slowly — CSS only, respects prefers-reduced-motion above */
-        @keyframes grainDrift {
-          0%   { background-position: 0% 0%; }
-          25%  { background-position: 22% 38%; }
-          50%  { background-position: 48% 12%; }
-          75%  { background-position: 8% 55%; }
-          100% { background-position: 0% 0%; }
-        }
-
-        /* Modal entrance animations */
-        @keyframes modalOverlayIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes modalPanelIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Generic fade-in used by modal success state */
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-      `}</style>
-
-      <SkipLink />
-
-      {/* Waitlist Modal */}
-      {activeChili ? (
-        <WaitlistModal chili={activeChili} onClose={() => setActiveChili(null)} />
-      ) : null}
-
-      {/* ── Top Nav ─────────────────────────────────────────────────────── */}
-      <header
-        className={cx(
-          'sticky top-0 z-50 border-b backdrop-blur-md transition-[box-shadow,background-color] duration-300',
-          scrolled
-            ? 'border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_86%,white)] shadow-[0_18px_55px_rgba(0,0,0,0.08)]'
-            : 'border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_92%,transparent)] shadow-none'
-        )}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          overflow: "hidden",
+          background: "var(--void)",
+        }}
       >
-        <nav
-          aria-label="Primary"
-          className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8"
-        >
-          <div className="flex items-center gap-3">
-            <a
-              href="#"
-              className="inline-flex items-baseline gap-2 rounded-md outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-              aria-label="CLUBA home"
-            >
-              <span className="font-[var(--serif)] text-lg tracking-[0.22em] uppercase">CLUBA</span>
-              <span className="hidden text-xs text-[var(--muted)] sm:inline">Beyond Heat. Defined by Origin.</span>
-            </a>
-          </div>
+        {ORIGINS.map((origin, i) => (
+          <OriginPanel
+            key={origin.id}
+            origin={origin}
+            index={i}
+            total={ORIGINS.length}
+            scrollYProgress={scrollYProgress}
+          />
+        ))}
 
-          {/* Desktop links */}
-          <div className="hidden items-center gap-7 md:flex">
-            <div className="flex items-center gap-6">
-              {NAV_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className="group rounded text-sm text-[var(--muted)] outline-none transition-colors hover:text-[var(--ink)] focus:text-[var(--ink)] focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                >
-                  <span className="relative inline-block pb-1">
-                    {l.label}
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-0 -bottom-0.5 h-[1px] w-full origin-left scale-x-0 bg-[var(--ink)] transition-transform duration-300 group-hover:scale-x-100"
-                    />
-                  </span>
-                </a>
-              ))}
-            </div>
-
-            {/* CTA with accent dot */}
-            <a
-              href="#collection"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_38px_rgba(0,0,0,0.10)] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-              aria-label="See current harvest"
-            >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-              See Current Harvest
-              <IconArrowRight className="h-4 w-4 opacity-70" />
-            </a>
-          </div>
-
-          {/* Mobile menu button */}
-          <button
-            type="button"
-            className="md:hidden inline-flex items-center justify-center rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] px-3 py-2 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-menu"
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            <span className="font-[var(--sans)] text-[13px] tracking-wide">{menuOpen ? 'Close' : 'Menu'}</span>
-          </button>
-        </nav>
-
-        {/* Mobile panel — height via grid-rows trick */}
+        {/* Scroll progress bar */}
         <div
-          id="mobile-menu"
-          className={cx(
-            'md:hidden border-t border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_92%,transparent)]',
-            reduced ? '' : 'transition-[opacity] duration-300',
-            menuOpen ? 'opacity-100' : 'opacity-0'
-          )}
-          aria-hidden={!menuOpen}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            right: "2rem",
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "1px",
+            height: "120px",
+            background: "rgba(232,221,208,0.1)",
+            zIndex: 10,
+          }}
         >
-          <div
-            className={cx(
-              'grid overflow-hidden',
-              reduced ? '' : 'transition-[grid-template-rows,transform] duration-300 ease-out',
-              menuOpen ? 'grid-rows-[1fr] translate-y-0' : 'grid-rows-[0fr] -translate-y-1'
-            )}
-          >
-            <div className="min-h-0">
-              <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
-                <div className="flex flex-col gap-3">
-                  {NAV_LINKS.map((l) => (
-                    <a
-                      key={l.href}
-                      href={l.href}
-                      onClick={() => setMenuOpen(false)}
-                      className="rounded-md px-2 py-2 text-sm text-[var(--muted)] outline-none transition-colors hover:text-[var(--ink)] focus:text-[var(--ink)] focus:ring-2 focus:ring-[var(--accent)]"
-                    >
-                      {l.label}
-                    </a>
-                  ))}
-                  <a
-                    href="#collection"
-                    onClick={() => setMenuOpen(false)}
-                    className="mt-2 inline-flex items-center justify-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-transform hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                    aria-label="See current harvest"
-                  >
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-                    See Current Harvest
-                    <IconArrowRight className="h-4 w-4 opacity-70" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
-        {/* ── Cinematic Hero ──────────────────────────────────────────────── */}
-        <section aria-label="Hero" className="relative h-[88vh] min-h-[640px] w-full overflow-hidden">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="absolute inset-0 h-full w-full object-cover"
-            aria-label="Cinematic background showing dried chili pods and harvest craft"
-          >
-            <source src="/hero.mp4" type="video/mp4" />
-          </video>
-
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50" />
-
-          <div
-            className="absolute inset-0"
+          <motion.div
             style={{
-              background: 'radial-gradient(1200px 800px at 50% 30%, rgba(124,92,58,0.15), transparent 60%)',
-              mixBlendMode: 'overlay',
+              width: "100%",
+              height: "100%",
+              background: "var(--accent)",
+              transformOrigin: "top",
+              scaleY: scrollYProgress,
             }}
           />
+        </div>
 
-          {/* Animated grain overlay — drifts slowly, respects prefers-reduced-motion */}
-          {!reduced ? (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 opacity-60"
+        <motion.div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            right: "2rem",
+            bottom: "2.5rem",
+            zIndex: 10,
+            fontFamily: "var(--font-dm-sans)",
+            fontSize: "0.55rem",
+            letterSpacing: "0.2em",
+            color: "rgba(232,221,208,0.3)",
+          }}
+        >
+          {ORIGINS.length} origins
+        </motion.div>
+      </div>
+    </div>
+  );
+}
+
+function OriginSequence() {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  return isMobile ? <OriginSequenceMobile /> : <OriginSequenceDesktop />;
+}
+
+/* ─── Section 3: Waitlist Earned ─────────────────────────────────────────── */
+
+function WaitlistEarned() {
+  const [email, setEmail] = useState("");
+  const [joined, setJoined] = useState(false);
+  const emailId = useId();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value) return;
+    try {
+      await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: value, source: "waitlist-earned" }),
+      });
+    } catch {
+      // silent fail — show success
+    }
+    setJoined(true);
+  }
+
+  return (
+    <section
+      id="waitlist-earned"
+      style={{
+        background: "var(--ink)",
+        padding: "clamp(5rem, 12vw, 10rem) clamp(1.5rem, 6vw, 4rem)",
+      }}
+    >
+      <Reveal>
+        <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center" }}>
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.65rem",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+            }}
+          >
+            Three Landscapes
+          </p>
+
+          <h2
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontWeight: 300,
+              fontSize: "clamp(2.2rem, 4vw, 3.5rem)",
+              color: "var(--paper)",
+              lineHeight: 1.2,
+              marginTop: "1.5rem",
+            }}
+          >
+            You've just traveled 3,800 meters of altitude.
+          </h2>
+
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontWeight: 300,
+              color: "var(--panel-text)",
+              fontSize: "clamp(0.95rem, 1.5vw, 1.1rem)",
+              lineHeight: 1.75,
+              marginTop: "1.5rem",
+              maxWidth: "44ch",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            The first pods ship this season. Reserve yours before they&apos;re archived.
+          </p>
+
+          {joined ? (
+            <p
+              role="status"
               style={{
-                backgroundImage: noise,
-                backgroundSize: '320px 320px',
-                mixBlendMode: 'multiply',
-                animation: 'grainDrift 12s linear infinite',
+                fontFamily: "var(--font-cormorant)",
+                fontStyle: "italic",
+                fontSize: "1.2rem",
+                color: "var(--panel-text)",
+                marginTop: "3rem",
+              }}
+            >
+              Noted. You&apos;ll hear from us before the pods ship.
+            </p>
+          ) : (
+            <form
+              onSubmit={handleSubmit}
+              aria-label="Waitlist signup"
+              style={{ marginTop: "3rem" }}
+            >
+              <label htmlFor={emailId} className="sr-only">
+                Email address
+              </label>
+              <div
+                className="flex flex-col gap-3 sm:flex-row"
+                style={{ maxWidth: "420px", margin: "0 auto" }}
+              >
+                <input
+                  id={emailId}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full sm:flex-1"
+                  style={{
+                    background: "#2A1E14",
+                    border: "1px solid var(--muted)",
+                    color: "var(--paper)",
+                    padding: "0.75rem 1rem",
+                    fontFamily: "var(--font-dm-sans)",
+                    fontSize: "0.9rem",
+                    outline: "none",
+                    borderRadius: "2px",
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto"
+                  style={{
+                    background: "var(--accent)",
+                    color: "var(--paper)",
+                    border: "none",
+                    padding: "0.75rem 1.5rem",
+                    fontFamily: "var(--font-dm-sans)",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    borderRadius: "2px",
+                    transition: "opacity 200ms",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Reserve a Pod
+                </button>
+              </div>
+              <p
+                style={{
+                  fontFamily: "var(--font-dm-sans)",
+                  fontSize: "0.6rem",
+                  color: "var(--muted)",
+                  textAlign: "center",
+                  marginTop: "1rem",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Limited to the 2025 harvest. Single-origin. Whole dried.
+              </p>
+            </form>
+          )}
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ─── Section 4: Collection ──────────────────────────────────────────────── */
+
+function CollectionSection({ onWaitlist }: { onWaitlist: (c: Chili) => void }) {
+  return (
+    <section
+      id="collection"
+      style={{
+        background: "var(--paper)",
+        padding: "clamp(4rem, 8vw, 7rem) clamp(1.5rem, 6vw, 4rem)",
+        position: "relative",
+      }}
+    >
+      {/* Dark → light transition bridge */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "80px",
+          background: "linear-gradient(to bottom, var(--ink), var(--paper))",
+          pointerEvents: "none",
+        }}
+      />
+
+      <div style={{ maxWidth: "80rem", margin: "0 auto", position: "relative" }}>
+        <Reveal>
+          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
+            <h2
+              style={{
+                fontFamily: "var(--font-cormorant)",
+                fontWeight: 300,
+                fontSize: "clamp(2rem, 4vw, 3rem)",
+                color: "var(--ink)",
+              }}
+            >
+              The Collection — 2025 Harvest
+            </h2>
+            <p
+              style={{
+                fontFamily: "var(--font-dm-sans)",
+                fontWeight: 300,
+                color: "var(--muted)",
+                marginTop: "0.75rem",
+                fontSize: "0.95rem",
+              }}
+            >
+              Four origins. Four drying methods. Named, numbered, archived.
+            </p>
+          </div>
+        </Reveal>
+
+        <Reveal delayMs={100}>
+          <ChiliCarousel chilies={FEATURED_CHILIES} onWaitlist={onWaitlist} />
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Section 5: Process ─────────────────────────────────────────────────── */
+
+function ProcessSection() {
+  return (
+    <section
+      id="process"
+      style={{
+        background: "var(--faint)",
+        padding: "clamp(4rem, 8vw, 7rem) clamp(1.5rem, 6vw, 4rem)",
+      }}
+    >
+      <div style={{ maxWidth: "80rem", margin: "0 auto" }}>
+        <Reveal>
+          <h2
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontWeight: 300,
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              color: "var(--ink)",
+              textAlign: "center",
+              marginBottom: "4rem",
+            }}
+          >
+            Field to Pod
+          </h2>
+        </Reveal>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+          {PROCESSES.map((p, i) => (
+            <Reveal key={p.method} delayMs={i * 80}>
+              <div>
+                {i > 0 && (
+                  <hr
+                    aria-hidden="true"
+                    className="block md:hidden mb-10"
+                    style={{ borderColor: "rgba(139,115,85,0.25)" }}
+                  />
+                )}
+                <p
+                  style={{
+                    fontFamily: "var(--font-cormorant)",
+                    fontSize: "2.2rem",
+                    color: "var(--earth)",
+                    lineHeight: 1,
+                    marginBottom: "1rem",
+                  }}
+                >
+                  {p.mark}
+                </p>
+                <h3
+                  style={{
+                    fontFamily: "var(--font-cormorant)",
+                    fontWeight: 400,
+                    fontSize: "1.8rem",
+                    color: "var(--ink)",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  {p.method}
+                </h3>
+                <p
+                  style={{
+                    fontFamily: "var(--font-dm-sans)",
+                    fontWeight: 300,
+                    fontSize: "0.9rem",
+                    color: "var(--muted)",
+                    lineHeight: 1.8,
+                  }}
+                >
+                  {p.description}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Section 6: Kitchen ─────────────────────────────────────────────────── */
+
+function KitchenSection() {
+  return (
+    <section
+      style={{
+        background: "var(--paper)",
+        padding: "clamp(4rem, 10vw, 8rem) clamp(1.5rem, 6vw, 4rem)",
+      }}
+    >
+      <Reveal>
+        <div
+          style={{
+            maxWidth: "680px",
+            margin: "0 auto",
+            textAlign: "center",
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.65rem",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              marginBottom: "2.5rem",
+            }}
+          >
+            In Your Kitchen
+          </p>
+
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontWeight: 300,
+              fontSize: "clamp(1.1rem, 1.8vw, 1.3rem)",
+              color: "var(--ink)",
+              lineHeight: 1.9,
+              marginBottom: "3rem",
+            }}
+          >
+            A guajillo from Oaxaca dropped into a braise is not a background
+            note. It is the braise. It lifts the fat, defines the color, and
+            leaves something in the bottom of the pot that tells you where it
+            came from. This is what named origin does to a dish. It makes the
+            source legible.
+          </p>
+
+          <p
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontStyle: "italic",
+              fontSize: "clamp(1.5rem, 2.2vw, 1.7rem)",
+              color: "var(--accent)",
+              lineHeight: 1.4,
+            }}
+          >
+            &ldquo;The pod is the record. The dish is the listening.&rdquo;
+          </p>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ─── Section 7: Close ───────────────────────────────────────────────────── */
+
+function CloseSection() {
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const emailId = useId();
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const value = email.trim();
+    if (!value) return;
+    try {
+      await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: value, source: "newsletter" }),
+      });
+    } catch {
+      // silent fail
+    }
+    setSubscribed(true);
+    setEmail("");
+    setTimeout(() => setSubscribed(false), 3000);
+  }
+
+  return (
+    <section
+      id="about"
+      style={{
+        background: "var(--void)",
+        padding: "clamp(6rem, 14vw, 12rem) clamp(1.5rem, 6vw, 4rem)",
+        textAlign: "center",
+      }}
+    >
+      <Reveal>
+        <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <h2
+            style={{
+              fontFamily: "var(--font-cormorant)",
+              fontWeight: 300,
+              fontSize: "clamp(2rem, 5vw, 3.5rem)",
+              color: "var(--paper)",
+              lineHeight: 1.25,
+            }}
+          >
+            Grown in one place. Named. Numbered. Yours.
+          </h2>
+
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontWeight: 300,
+              fontSize: "0.8rem",
+              color: "var(--muted)",
+              marginTop: "3rem",
+              letterSpacing: "0.06em",
+            }}
+          >
+            Field Notes — occasional dispatches from origin
+          </p>
+
+          <form
+            onSubmit={handleSubmit}
+            aria-label="Newsletter signup"
+            className="flex flex-col gap-3 sm:flex-row"
+            style={{
+              marginTop: "1.25rem",
+              maxWidth: "400px",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            <label htmlFor={emailId} className="sr-only">
+              Email address
+            </label>
+            <input
+              id={emailId}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full sm:flex-1"
+              style={{
+                background: "#2A1E14",
+                border: "1px solid rgba(139,115,85,0.5)",
+                color: "var(--paper)",
+                padding: "0.7rem 1rem",
+                fontFamily: "var(--font-dm-sans)",
+                fontSize: "0.875rem",
+                outline: "none",
+                borderRadius: "2px",
               }}
             />
-          ) : null}
-
-          <div className="relative z-10 mx-auto flex h-full max-w-6xl flex-col items-center justify-center px-6 text-center">
-            <p className="mb-6 text-xs uppercase tracking-[0.25em] text-white/80">
-              WHOLE PODS · HARVEST YEAR LABELED · NO ADDITIVES
-            </p>
-
-            <h1
-              className="font-[var(--serif)] text-4xl leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
-              style={{ textShadow: '0 2px 24px rgba(0,0,0,0.45), 0 1px 4px rgba(0,0,0,0.30)' }}
+            <button
+              type="submit"
+              className="w-full sm:w-auto"
+              style={{
+                background: "var(--accent)",
+                color: "var(--paper)",
+                border: "none",
+                padding: "0.7rem 1.25rem",
+                fontFamily: "var(--font-dm-sans)",
+                fontSize: "0.65rem",
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                borderRadius: "2px",
+                whiteSpace: "nowrap",
+              }}
             >
-              Beyond Heat. Defined by Origin.
-            </h1>
+              Subscribe
+            </button>
+          </form>
 
-            <div
-              className="mt-6 max-w-2xl space-y-2 font-[var(--sans)] text-base leading-relaxed text-white/85 sm:text-lg"
-              style={{ textShadow: '0 1px 12px rgba(0,0,0,0.35)' }}
+          {subscribed && (
+            <p
+              role="status"
+              style={{
+                fontFamily: "var(--font-dm-sans)",
+                fontSize: "0.75rem",
+                color: "var(--muted)",
+                marginTop: "1rem",
+                animation: "fadeIn 300ms ease-out both",
+              }}
             >
-              <p>Single-origin whole dried chilies.</p>
-              <p>Labeled by region, species, and harvest year.</p>
-              <p>Each pod reflects soil, altitude, and drying method.</p>
-              <p className="pt-1 text-white/80">Flavor leads. Heat completes.</p>
-            </div>
-
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <HeroCTA href="#origins" label="Browse Origins" variant="primary" />
-              <HeroCTA href="#collection" label="See Current Harvest" variant="secondary" />
-            </div>
-          </div>
-        </section>
-
-        {/* ── Origins ─────────────────────────────────────────────────────── */}
-        <Reveal delayMs={80}>
-          <section aria-label="Origins section" className="py-12 sm:py-16" id="origins">
-            <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
-              <div className="lg:col-span-5">
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Chili is agricultural.</h2>
-
-                <div className="mt-5 space-y-3 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  <p>Most dried chili is blended.</p>
-                  <p>The field disappears.</p>
-                  <p>We keep it visible.</p>
-                </div>
-
-                <p className="mt-7 text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Place. Plant. Year.</p>
-
-                <p className="mt-6 font-[var(--serif)] text-sm leading-relaxed text-[color:color-mix(in_oklab,var(--ink)_85%,var(--earth))]">
-                  Climate shapes sweetness.
-                  <br />
-                  Altitude refines aroma.
-                  <br />
-                  Drying preserves depth.
-                </p>
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="mb-6">
-                  <SectionFigure
-                    src={SECTION_IMAGES.origin.src}
-                    alt={SECTION_IMAGES.origin.alt}
-                    caption={SECTION_IMAGES.origin.caption}
-                    aspectClass="aspect-[16/10]"
-                  />
-                </div>
-
-                <div className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 sm:p-8">
-                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">From field to record</p>
-                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    From volcanic slopes in Oaxaca to high valleys in Kashmir, each origin carries a distinct expression
-                    of the plant.
-                  </p>
-
-                  <a
-                    href="#species"
-                    className="mt-7 inline-flex items-center gap-2 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                    aria-label="Continue to species"
-                  >
-                    Continue
-                    <IconArrowRight className="h-4 w-4 opacity-70" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </section>
-        </Reveal>
-
-        {/* ── Species + Flavor Profile ─────────────────────────────────────── */}
-        <Reveal delayMs={120}>
-          <section aria-label="Species section" className="py-12 sm:py-16" id="species">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Place. Plant. Year.</h2>
-                <p className="mt-3 max-w-2xl font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Origin and species determine fruit chemistry. That changes aroma structure. And how heat arrives.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-6 lg:grid-cols-12 lg:items-start">
-              <div className="lg:col-span-5">
-                <SectionFigure
-                  src={SECTION_IMAGES.species.src}
-                  alt={SECTION_IMAGES.species.alt}
-                  caption={SECTION_IMAGES.species.caption}
-                  aspectClass="aspect-[4/5]"
-                />
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="grid gap-6">
-                  <article className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">ORIGIN</p>
-                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Origin as identity</h3>
-                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Soil, climate, and altitude shape the fruit.
-                    </p>
-                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      We name every region.
-                      <br />
-                      We name every harvest.
-                    </p>
-                  </article>
-
-                  <article className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</p>
-                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Plant as species</h3>
-                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Chili is a family.
-                      <br />
-                      Species changes fruit chemistry.
-                      <br />
-                      That changes aroma structure.
-                      <br />
-                      And how heat arrives.
-                    </p>
-                    <div className="mt-5 border-t border-[var(--hair)] pt-5">
-                      <p className="font-[var(--serif)] text-sm italic text-[var(--ink)]">Capsicum annuum</p>
-                      <p className="font-[var(--serif)] text-sm italic text-[var(--ink)]">Capsicum chinense</p>
-                      <p className="font-[var(--serif)] text-sm italic text-[var(--ink)]">Capsicum baccatum</p>
-                    </div>
-                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Different character.
-                      <br />
-                      Different finish.
-                    </p>
-                  </article>
-
-                  <article className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">FLAVOR PROFILE</p>
-                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Taste first. Then warmth.</h3>
-
-                    <div className="mt-3 space-y-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      <p>Tasting notes describe fruit and earth.</p>
-                      <p>Heat is described as structure.</p>
-                    </div>
-
-                    <div className="mt-5 border-t border-[var(--hair)] pt-5">
-                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Gentle warmth.</p>
-                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Steady heat.</p>
-                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Firm finish.</p>
-                      <p className="font-[var(--serif)] text-sm text-[var(--ink)]">Clean fade.</p>
-                    </div>
-                  </article>
-                </div>
-              </div>
-            </div>
-          </section>
-        </Reveal>
-
-        {/* ── Process + Purity ─────────────────────────────────────────────── */}
-        <Reveal delayMs={160}>
-          <section aria-label="Process section" className="py-12 sm:py-16" id="process">
-            <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
-              <div className="lg:col-span-5">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">PROCESS</p>
-                <h2 className="mt-2 font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Field to pod</h2>
-
-                <div className="mt-5 space-y-3 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  <p>Harvested at peak maturity.</p>
-                  <p>Traditionally dried.</p>
-                  <p>Whole pods protect aroma.</p>
-                  <p>Grinding is left to the cook.</p>
-                  <p>Grind only what you need.</p>
-                </div>
-
-                <div className="mt-8">
-                  <SectionFigure
-                    src={SECTION_IMAGES.process.src}
-                    alt={SECTION_IMAGES.process.alt}
-                    caption={SECTION_IMAGES.process.caption}
-                    aspectClass="aspect-[16/10]"
-                  />
-                </div>
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_80%,white)] p-6 sm:p-8">
-                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">How we dry</p>
-
-                  <div className="mt-6 grid gap-6 sm:grid-cols-3">
-                    {[
-                      { title: 'Sun', body: 'Deeper fruit. Rounder sweetness.' },
-                      { title: 'Shade', body: 'Brighter aroma. Cleaner finish.' },
-                      { title: 'Smoke', body: 'Used sparingly. Structural, not dominant.' },
-                    ].map((m) => (
-                      <article
-                        key={m.title}
-                        className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]"
-                      >
-                        <h3 className="font-[var(--serif)] text-2xl">{m.title}</h3>
-                        <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{m.body}</p>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="mt-8 border-t border-[var(--hair)] pt-6">
-                    <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Unadjusted</p>
-                    <h3 className="mt-2 font-[var(--serif)] text-2xl">Nothing added. Nothing corrected.</h3>
-                    <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Whole pods only. No preservatives. No additives. No artificial coloring.
-                    </p>
-                    <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                      Minimal matte tubes with an inner pouch. Designed to protect aroma — and to be kept.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </Reveal>
-
-        {/* ── Current Harvest ──────────────────────────────────────────────── */}
-        <Reveal delayMs={180}>
-          <section aria-label="Collection" className="py-12 sm:py-16" id="collection">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">CURRENT HARVEST</p>
-                <h2 className="mt-2 font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">
-                  Defined by place. Labeled by year.
-                </h2>
-                <p className="mt-3 max-w-2xl font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Whole pods preserve the volatile aromatics that ground spices lose.
-                </p>
-                <p className="mt-3 max-w-2xl font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                  Harvest quantities vary by season.
-                </p>
-              </div>
-
-              <a
-                href="#origins"
-                className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                aria-label="Browse origins"
-              >
-                Browse Origins
-                <IconArrowRight className="h-4 w-4 opacity-70" />
-              </a>
-            </div>
-
-            {/* Records grid */}
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURED_CHILIES.map((c) => (
-                <article
-                  key={c.name}
-                  className="group relative overflow-hidden rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)] active:translate-y-0"
-                  aria-label={`${c.name} record`}
-                >
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-30 blur-2xl"
-                    style={{
-                      background:
-                        'radial-gradient(circle at 30% 30%, rgba(124,30,26,.26), rgba(124,92,58,.14), transparent 70%)',
-                    }}
-                  />
-
-                  <header>
-                    {/* Name + Available badge */}
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-[var(--serif)] text-2xl leading-tight">{c.name}</h3>
-                      {c.available ? (
-                        <span
-                          className="mt-1 shrink-0 rounded-full border border-[var(--hair)] px-2 py-0.5 text-[10px] uppercase tracking-[0.22em] text-[var(--accent)]"
-                          style={{ boxShadow: '0 0 12px rgba(124,30,26,0.15)' }}
-                        >
-                          Available
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <p className="mt-2 font-[var(--sans)] text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-                      {c.region}, {c.country}
-                    </p>
-                  </header>
-
-                  {/* Archive metadata block */}
-                  <dl className="mt-5 space-y-3 border-t border-[var(--hair)] pt-5">
-                    {c.archiveNo ? (
-                      <div className="flex items-start justify-between gap-4">
-                        <dt className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">ARCHIVE NO.</dt>
-                        <dd className="text-[11px] font-[var(--sans)] text-[var(--muted)]">{c.archiveNo}</dd>
-                      </div>
-                    ) : null}
-
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">SPECIES</dt>
-                      <dd className="text-sm font-[var(--serif)] italic text-[var(--ink)]">{c.species}</dd>
-                    </div>
-
-                    <div className="flex items-start justify-between gap-4">
-                      <dt className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">HARVEST</dt>
-                      <dd className="text-sm font-[var(--sans)] text-[var(--ink)]">{c.harvestYear}</dd>
-                    </div>
-                  </dl>
-
-                  {/* Faint rule between archive metadata and tasting notes */}
-                  <hr className="my-4 border-[var(--faint)]" aria-hidden="true" />
-
-                  {/* Tasting notes — italic serif */}
-                  <p className="font-[var(--serif)] text-[15px] italic leading-relaxed text-[var(--ink)]">
-                    {c.notes.join(' · ')}
-                  </p>
-
-                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{c.drying}</p>
-
-                  <p className="mt-4 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    Heat: {formatSHURange(c.heat.min, c.heat.max)} · {c.heat.descriptor}
-                  </p>
-
-                  <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    Ideal for: {c.use}
-                  </p>
-
-                  <div className="mt-6">
-                    <button
-                      type="button"
-                      onClick={() => setActiveChili(c)}
-                      aria-label={`View harvest record for ${c.name} ${c.harvestYear}`}
-                      className="inline-flex items-center gap-2 rounded outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                      style={{ color: '#8C1C1C' }}
-                    >
-                      <span
-                        className="text-sm underline underline-offset-4 transition-colors"
-                        style={{ textDecorationColor: 'rgba(17,17,17,.16)' }}
-                      >
-                        View Harvest Record
-                      </span>
-                      <IconArrowRight className="h-4 w-4 opacity-70" />
-                    </button>
-                  </div>
-
-                  <p className="mt-5 font-[var(--sans)] text-xs text-[var(--muted)]">
-                    Whole pods only. Grind as needed.
-                  </p>
-                </article>
-              ))}
-            </div>
-          </section>
-        </Reveal>
-
-        {/* ── Journal ──────────────────────────────────────────────────────── */}
-        <Reveal delayMs={200}>
-          <section aria-label="Journal" className="py-12 sm:py-16" id="journal">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">Field Notes.</h2>
-                <p className="mt-3 max-w-2xl font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  Origin, species, and craft — written clearly. Designed to be useful.
-                </p>
-              </div>
-              <a
-                href="/journal"
-                className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_70%,white)] px-4 py-2 text-sm text-[var(--ink)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                aria-label="Read field notes"
-              >
-                Read Field Notes
-                <IconArrowRight className="h-4 w-4 opacity-70" />
-              </a>
-            </div>
-
-            <div className="mt-8 grid gap-6 lg:grid-cols-3">
-              {JOURNAL_POSTS.map((p) => (
-                <article
-                  key={p.title}
-                  className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(0,0,0,0.08)]"
-                  aria-label={`Journal post: ${p.title}`}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_65%,white)] px-3 py-1 text-xs text-[var(--muted)]">
-                      {p.tag}
-                    </span>
-                    <time className="text-xs text-[var(--muted)]" dateTime={p.date}>
-                      {formatDateISO(p.date)}
-                    </time>
-                  </div>
-                  <h3 className="mt-4 font-[var(--serif)] text-2xl leading-snug">
-                    <a
-                      href={p.href}
-                      className="rounded outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                    >
-                      {p.title}
-                    </a>
-                  </h3>
-                  <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">{p.excerpt}</p>
-                  <a
-                    href={p.href}
-                    className="mt-6 inline-flex items-center gap-2 rounded text-sm text-[var(--ink)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:decoration-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                    aria-label={`Read ${p.title}`}
-                  >
-                    Read
-                    <IconArrowRight className="h-4 w-4 opacity-70" />
-                  </a>
-                </article>
-              ))}
-            </div>
-          </section>
-        </Reveal>
-
-        {/* Decorative separator above About */}
-        <hr className="border-[var(--hair)]" aria-hidden="true" />
-
-        {/* ── Closing + Email ───────────────────────────────────────────────── */}
-        <Reveal delayMs={220}>
-          <section aria-label="Closing statement and signup" className="py-12 sm:py-16" id="about">
-            <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
-              <div className="lg:col-span-5">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">CLOSING</p>
-                <h2 className="mt-2 font-[var(--serif)] text-3xl tracking-tight sm:text-4xl">
-                  Beyond heat.
-                  <br />
-                  Defined by origin.
-                </h2>
-
-                <div className="mt-5 space-y-3 font-[var(--sans)] text-base leading-relaxed text-[var(--muted)]">
-                  <p>Place shapes flavor.</p>
-                  <p>Season shapes detail.</p>
-                  <p>Heat supports the finish.</p>
-                  <p>It never leads.</p>
-                </div>
-
-                <div className="mt-8">
-                  <SectionFigure
-                    src={SECTION_IMAGES.packaging.src}
-                    alt={SECTION_IMAGES.packaging.alt}
-                    caption={SECTION_IMAGES.packaging.caption}
-                    aspectClass="aspect-[4/3]"
-                  />
-                </div>
-              </div>
-
-              <div className="lg:col-span-7">
-                <div className="rounded-3xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_82%,white)] p-6 sm:p-8">
-                  <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Field Notes</p>
-                  <h3 className="mt-2 font-[var(--serif)] text-2xl">Receive new harvests and writing.</h3>
-                  <p className="mt-3 font-[var(--sans)] text-sm leading-relaxed text-[var(--muted)]">
-                    Occasional. Useful. No excess.
-                  </p>
-
-                  <form onSubmit={onSubmitEmail} aria-label="Email signup form" className="mt-6">
-                    <label htmlFor={emailId} className="sr-only">
-                      Email
-                    </label>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <input
-                        id={emailId}
-                        name="email"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        placeholder="you@domain.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded-2xl border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_72%,white)] px-4 py-3 font-[var(--sans)] text-sm text-[var(--ink)] outline-none transition-shadow focus:ring-2 focus:ring-[var(--accent)]"
-                        aria-label="Email address"
-                      />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--ink)] px-5 py-3 text-sm text-[var(--paper)] shadow-[0_14px_40px_rgba(0,0,0,0.18)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--paper)]"
-                        aria-label="Subscribe to field notes"
-                      >
-                        Subscribe
-                        <IconArrowRight className="h-4 w-4 opacity-80" />
-                      </button>
-                    </div>
-
-                    <div className="mt-4 flex items-start justify-between gap-6">
-                      <p className="max-w-xl font-[var(--sans)] text-xs leading-relaxed text-[var(--muted)]">
-                        Local-only for now. Later, connect via Cloudflare Worker / Pages Function.
-                      </p>
-                      {/* Success state — fades in smoothly */}
-                      <div
-                        role="status"
-                        aria-live="polite"
-                        className={cx(
-                          'shrink-0 rounded-full border border-[var(--hair)] bg-[color:color-mix(in_oklab,var(--paper)_68%,white)] px-3 py-1 text-xs text-[var(--muted)] transition-[opacity] duration-500',
-                          subscribed ? 'opacity-100' : 'opacity-0'
-                        )}
-                      >
-                        Noted. Thank you.
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </section>
-        </Reveal>
-
-        {/* ── Footer ───────────────────────────────────────────────────────── */}
-        <footer aria-label="Footer" className="border-t border-[var(--hair)] py-10">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-[var(--serif)] text-lg tracking-[0.22em] uppercase">CLUBA</p>
-              <p className="mt-2 font-[var(--sans)] text-sm text-[var(--muted)]">
-                Single-origin whole dried chilies. Region, species, harvest year — labeled clearly.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              {NAV_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className="rounded text-sm text-[var(--muted)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:text-[var(--ink)] hover:decoration-[var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
-                >
-                  {l.label}
-                </a>
-              ))}
-              <a
-                href="#main"
-                className="rounded text-sm text-[var(--muted)] underline decoration-[var(--hair)] underline-offset-4 transition-colors hover:text-[var(--ink)] hover:decoration-[var(--ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
-              >
-                Back to top
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
-                © {new Date().getFullYear()} CLUBA. Beyond Heat. Defined by Origin.
-              </p>
-              <p className="mt-1 font-[var(--sans)] text-xs text-[var(--muted)]">
-                Whole pods. Named origins. Honest heat.
-              </p>
-            </div>
-            <p className="font-[var(--sans)] text-xs text-[var(--muted)]">
-              WHOLE PODS · HARVEST YEAR LABELED · NO ADDITIVES
+              Noted. Thank you.
             </p>
-          </div>
-        </footer>
+          )}
+
+          {/* Colophon */}
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.55rem",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              opacity: 0.45,
+              marginTop: "5rem",
+            }}
+          >
+            CLUBA · Mexico · 2025 Harvest · cluba.com
+          </p>
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.55rem",
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              opacity: 0.25,
+              marginTop: "0.5rem",
+            }}
+          >
+            Beyond Heat. Defined by Origin.
+          </p>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────────────────── */
+
+export default function Page() {
+  const [scrolled, setScrolled] = useState(false);
+  const [activeChili, setActiveChili] = useState<Chili | null>(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 80);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div style={{ background: "var(--void)" }}>
+      <SkipLink />
+      <FloatingNav scrolled={scrolled} />
+
+      <main id="main">
+        <HeroSection />
+        <OriginSequence />
+        <WaitlistEarned />
+        <CollectionSection onWaitlist={setActiveChili} />
+        <ProcessSection />
+        <KitchenSection />
+        <CloseSection />
       </main>
+
+      {activeChili && (
+        <WaitlistModal
+          chili={activeChili}
+          onClose={() => setActiveChili(null)}
+        />
+      )}
     </div>
   );
 }

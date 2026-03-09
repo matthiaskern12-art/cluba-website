@@ -1,33 +1,41 @@
 @import "tailwindcss";
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   CLUBA Design System
+/* ─────────────────────────────────────────────
+   CLUBA Design System — Option B: The Origin Map
    Beyond Heat. Defined by Origin.
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+───────────────────────────────────────────── */
 
 :root {
-  --paper:  #F6F1E7;
-  --ink:    #111111;
-  --muted:  rgba(17, 17, 17, 0.70);
-  --faint:  rgba(17, 17, 17, 0.12);
-  --hair:   rgba(17, 17, 17, 0.16);
-  --accent: #7C1E1A;
-  --earth:  #7C5C3A;
+  /* Core palette */
+  --paper:      #FAF7F2;
+  --ink:        #1C1008;
+  --earth:      #8B4513;
+  --muted:      #8B7355;
+  --accent:     #C4622D;
+  --hair:       #D4C4A8;
+  --faint:      #F0EAE0;
+  --green:      #1A3D22;
 
+  /* Dark depth tokens */
+  --void:       #0E0A06;
+  --deep:       #1A1008;
+  --panel-text: #E8DDD0;
+
+  /* Legacy typography stacks (fallbacks) */
   --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
            "Cormorant Garamond", Garamond, serif;
   --sans:  ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
            "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 
-  --background: var(--paper);
-  --foreground: var(--ink);
+  --background: var(--void);
+  --foreground: var(--paper);
 }
 
-/* CLUBA is a warm-paper brand â€” never invert to dark */
+/* CLUBA uses intentional dark sections — never override to light */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: var(--paper);
-    --foreground: var(--ink);
+    --background: var(--void);
+    --foreground: var(--paper);
   }
 }
 
@@ -41,12 +49,55 @@ html {
 }
 
 body {
-  background-color: var(--paper);
-  color: var(--ink);
-  font-family: var(--sans);
+  background-color: var(--void);
+  color: var(--paper);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Topographic hero drift */
+@keyframes topoShift {
+  from { transform: translateX(0) translateY(0); }
+  to   { transform: translateX(-5%) translateY(-2%); }
+}
+
+/* Modal animations */
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalPanelIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Mobile global fixes ─────────────────────────────────────────────────── */
+
+/* Prevent horizontal overflow */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Minimum tap target size */
+button, input[type="submit"] {
+  min-height: 44px;
+}
+
+/* Prevent iOS font inflation */
+@media (max-width: 767px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

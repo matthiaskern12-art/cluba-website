@@ -1,4 +1,10 @@
 name = "cluba"
+main = ".open-next/worker.js"
 compatibility_date = "2026-03-08"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".open-next/assets"
+
+assets = { directory = ".open-next/assets", binding = "ASSETS" }
+
+[[kv_namespaces]]
+binding = "CLUBA_WAITLIST"
+id = "49fe3c898c2f4a84af1c5e6cd51db62b"
