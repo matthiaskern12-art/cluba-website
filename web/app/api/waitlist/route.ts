@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-interface KVNamespace {
+interface CLUBA_WAITLISTNamespace {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
 }
@@ -30,10 +30,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400 });
     }
 
-    const kv = (globalThis as unknown as { KV_BINDING: KVNamespace }).KV_BINDING;
+    const kv = (globalThis as unknown as { CLUBA_WAITLIST: CLUBA_WAITLISTNamespace }).CLUBA_WAITLIST;
 
     if (!kv) {
-      console.error("KV_BINDING not available — check wrangler.toml binding name");
+      console.error("CLUBA_WAITLIST not available — check wrangler.toml binding name");
       return NextResponse.json({ ok: false, error: "Storage unavailable" }, { status: 500 });
     }
 
