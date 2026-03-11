@@ -336,7 +336,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
     const value = email.trim();
     if (!value) return;
     try {
-      await fetch("/api/waitlist", {
+      const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -346,8 +346,12 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           archiveNo: chili.archiveNo,
         }),
       });
-    } catch {
-      // show success regardless
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Waitlist failed:", (data as { error?: string }).error);
+      }
+    } catch (err) {
+      console.error("Waitlist fetch error:", err);
     }
     setSubmitted(true);
   }
@@ -1245,13 +1249,17 @@ function WaitlistEarned() {
     const value = email.trim();
     if (!value) return;
     try {
-      await fetch("/api/waitlist", {
+      const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: value, source: "waitlist-earned" }),
       });
-    } catch {
-      // silent fail — show success
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Waitlist failed:", (data as { error?: string }).error);
+      }
+    } catch (err) {
+      console.error("Waitlist fetch error:", err);
     }
     setJoined(true);
   }
@@ -1613,13 +1621,17 @@ function CloseSection() {
     const value = email.trim();
     if (!value) return;
     try {
-      await fetch("/api/waitlist", {
+      const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: value, source: "newsletter" }),
       });
-    } catch {
-      // silent fail
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Waitlist failed:", (data as { error?: string }).error);
+      }
+    } catch (err) {
+      console.error("Waitlist fetch error:", err);
     }
     setSubscribed(true);
     setEmail("");
