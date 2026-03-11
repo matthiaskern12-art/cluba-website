@@ -2,12 +2,7 @@
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import {
-  motion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from "framer-motion";
+import { motion } from "framer-motion";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
@@ -970,51 +965,41 @@ function HeroSection() {
 
 /* ─── Section 2: Origin Sequence ─────────────────────────────────────────── */
 
-function OriginPanel({
+function DesktopOriginPanel({
   origin,
   index,
-  total,
-  scrollYProgress,
+  activeIndex,
+  progress,
 }: {
   origin: OriginEntry;
   index: number;
-  total: number;
-  scrollYProgress: MotionValue<number>;
+  activeIndex: number;
+  progress: number;
 }) {
-  const OVERLAP = 0.04;
-  const segmentSize = 1 / total;
-  const start = index * segmentSize;
-  const end = (index + 1) * segmentSize;
-  const isLast = index === total - 1;
+  let opacity = 0;
 
-  const opacity = useTransform(
-    scrollYProgress,
-    [
-      Math.max(0, start - OVERLAP),
-      Math.min(1, start + OVERLAP),
-      Math.max(0, end - OVERLAP),
-      Math.min(1, end),
-    ],
-    [0, 1, 1, isLast ? 1 : 0]
-  );
+  if (index === activeIndex) {
+    opacity = progress > 0.85 ? 1 - (progress - 0.85) / 0.15 : 1;
+  } else if (index === activeIndex + 1) {
+    opacity = progress > 0.85 ? (progress - 0.85) / 0.15 : 0;
+  }
+
+  if (index === ORIGINS.length - 1 && activeIndex === ORIGINS.length - 1) {
+    opacity = 1;
+  }
 
   return (
-    <motion.div
+    <div
       style={{
-        opacity,
         position: "absolute",
         inset: 0,
-        zIndex: index,
+        opacity,
+        transition: "opacity 0.15s ease",
+        zIndex: index === activeIndex ? 2 : index === activeIndex + 1 ? 1 : 0,
       }}
     >
       {/* Background image */}
-      <div
-        style={{
-          position: "absolute",
-          inset: "-10% 0",
-          zIndex: 0,
-        }}
-      >
+      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={origin.imagePath}
@@ -1030,30 +1015,30 @@ function OriginPanel({
           position: "absolute",
           inset: 0,
           zIndex: 10,
-          background:
-            "linear-gradient(to right, rgba(14,10,6,0.88) 45%, rgba(14,10,6,0.25) 100%)",
+          background: "linear-gradient(to right, rgba(14,10,6,0.88) 45%, rgba(14,10,6,0.2) 100%)",
         }}
       />
 
       {/* Text content */}
       <div
         style={{
-          position: "absolute",
-          inset: 0,
+          position: "relative",
           zIndex: 20,
+          height: "100%",
           display: "flex",
           alignItems: "center",
-          padding: "0 clamp(1.5rem, 8vw, 6rem)",
+          padding: "0 clamp(3rem, 8vw, 8rem)",
         }}
       >
-        <div style={{ maxWidth: "36rem" }}>
+        <div style={{ maxWidth: "38rem" }}>
           <p
             style={{
-              fontFamily: "var(--font-dm-sans)",
-              fontSize: "0.65rem",
-              letterSpacing: "0.22em",
-              textTransform: "uppercase",
               color: "var(--muted)",
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.7rem",
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              marginBottom: "1rem",
             }}
           >
             {String(index + 1).padStart(2, "0")} — {origin.region} · {origin.elevation}
@@ -1066,7 +1051,7 @@ function OriginPanel({
               fontSize: "clamp(3rem, 6vw, 5.5rem)",
               color: "var(--paper)",
               lineHeight: 1.05,
-              marginTop: "1rem",
+              margin: 0,
             }}
           >
             {origin.chili}
@@ -1076,11 +1061,11 @@ function OriginPanel({
             style={{
               fontFamily: "var(--font-cormorant)",
               fontWeight: 300,
-              fontSize: "clamp(1rem, 1.4vw, 1.2rem)",
+              fontSize: "clamp(1rem, 1.3vw, 1.2rem)",
               color: "var(--panel-text)",
               lineHeight: 1.8,
               marginTop: "1.5rem",
-              maxWidth: "38ch",
+              maxWidth: "34ch",
             }}
           >
             {origin.fieldNote}
@@ -1088,18 +1073,19 @@ function OriginPanel({
 
           <p
             style={{
-              fontFamily: "var(--font-dm-sans)",
-              fontSize: "0.6rem",
-              letterSpacing: "0.18em",
               color: "var(--muted)",
-              marginTop: "2.5rem",
+              fontFamily: "var(--font-dm-sans)",
+              fontSize: "0.65rem",
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              marginTop: "2rem",
             }}
           >
             Archive № {origin.archiveNo}
           </p>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -1164,10 +1150,31 @@ function OriginSequenceMobile() {
 
 function OriginSequenceDesktop() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const containerTop = container.getBoundingClientRect().top + window.scrollY;
+      const scrollableDistance = container.scrollHeight - window.innerHeight;
+      const scrolled = Math.max(0, window.scrollY - containerTop);
+      const rawProgress = Math.min(1, scrolled / scrollableDistance);
+
+      const panelProgress = rawProgress * ORIGINS.length;
+      const index = Math.min(ORIGINS.length - 1, Math.floor(panelProgress));
+      const withinPanel = panelProgress - index;
+
+      setActiveIndex(index);
+      setProgress(withinPanel);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <div
@@ -1184,16 +1191,16 @@ function OriginSequenceDesktop() {
         }}
       >
         {ORIGINS.map((origin, i) => (
-          <OriginPanel
+          <DesktopOriginPanel
             key={origin.id}
             origin={origin}
             index={i}
-            total={ORIGINS.length}
-            scrollYProgress={scrollYProgress}
+            activeIndex={activeIndex}
+            progress={progress}
           />
         ))}
 
-        {/* Scroll progress bar */}
+        {/* Scroll progress indicator */}
         <div
           aria-hidden="true"
           style={{
@@ -1202,37 +1209,20 @@ function OriginSequenceDesktop() {
             top: "50%",
             transform: "translateY(-50%)",
             width: "1px",
-            height: "120px",
-            background: "rgba(232,221,208,0.1)",
-            zIndex: 10,
+            height: "6rem",
+            background: "rgba(212,196,168,0.15)",
+            zIndex: 100,
           }}
         >
-          <motion.div
+          <div
             style={{
               width: "100%",
-              height: "100%",
+              height: `${((activeIndex + progress) / ORIGINS.length) * 100}%`,
               background: "var(--accent)",
-              transformOrigin: "top",
-              scaleY: scrollYProgress,
+              transition: "height 0.1s ease",
             }}
           />
         </div>
-
-        <motion.div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            right: "2rem",
-            bottom: "2.5rem",
-            zIndex: 10,
-            fontFamily: "var(--font-dm-sans)",
-            fontSize: "0.55rem",
-            letterSpacing: "0.2em",
-            color: "rgba(232,221,208,0.3)",
-          }}
-        >
-          {ORIGINS.length} origins
-        </motion.div>
       </div>
     </div>
   );
