@@ -1043,11 +1043,19 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
       const container = containerRef.current;
       if (!container) return;
 
-      const containerTop = container.getBoundingClientRect().top + window.scrollY;
-      const panelHeight = container.scrollHeight / origins.length;
-      const scrolled = Math.max(0, window.scrollY - containerTop);
+      // Use getBoundingClientRect().top directly — works with both native scroll
+      // and Lenis (which applies transform instead of updating window.scrollY).
+      // Negative top = we've scrolled that many px past the section start.
+      const bcrTop = container.getBoundingClientRect().top;
 
-      // Switch panel at 80% of each panel's scroll distance for a natural crossfade overlap
+      // Scrollable distance = total container height minus one viewport height
+      // (the sticky panel itself). Gives exactly 100vh per panel for 3 origins.
+      const scrollableDistance = container.offsetHeight - window.innerHeight;
+      const panelHeight = scrollableDistance / origins.length;
+
+      const scrolled = Math.max(0, Math.min(scrollableDistance, -bcrTop));
+
+      // Switch panel at 80% of each panel's scroll zone for cinematic crossfade overlap
       const index = Math.min(origins.length - 1, Math.floor(scrolled / (panelHeight * 0.8)));
 
       setActiveIndex(index);
