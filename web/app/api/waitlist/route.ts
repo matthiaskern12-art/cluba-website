@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+export const runtime = "edge";
 
-interface CLUBA_WAITLISTNamespace {
+import { NextRequest, NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+
+interface KVNamespace {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
 }
@@ -30,33 +33,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400 });
     }
 
-    const kv = (globalThis as unknown as { CLUBA_WAITLIST: CLUBA_WAITLISTNamespace }).CLUBA_WAITLIST;
+    const { env } = getCloudflareContext();
+    const kv = (env as unknown as { CLUBA_WAITLIST: KVNamespace }).CLUBA_WAITLIST;
 
     if (!kv) {
-      console.error("CLUBA_WAITLIST not available — check wrangler.toml binding name");
-      return NextResponse.json({ ok: false, error: "Storage unavailable" }, { status: 500 });
+      console.error("CLUBA_WAITLIST not found in env — check wrangler.toml binding name");
+      return NextResponse.json({ ok: false, error: "Storage unavailable: CLUBA_WAITLIST binding missing" }, { status: 500 });
     }
 
     const key = `waitlist:${email}`;
-    const existing = await kv.get(key);
+
+    let existing: string | null = null;
+    try {
+      existing = await kv.get(key);
+    } catch (err) {
+      console.error("KV get error:", err);
+      return NextResponse.json({ ok: false, error: `KV read failed: ${String(err)}` }, { status: 500 });
+    }
 
     if (!existing) {
-      await kv.put(
-        key,
-        JSON.stringify({
-          email,
-          source: (body.source || "homepage").slice(0, 80),
-          locale: body.locale === "de" ? "de" : "en",
-          createdAt: new Date().toISOString(),
-        })
-      );
+      try {
+        await kv.put(
+          key,
+          JSON.stringify({
+            email,
+            source: (body.source || "homepage").slice(0, 80),
+            locale: body.locale === "de" ? "de" : "en",
+            createdAt: new Date().toISOString(),
+          })
+        );
+      } catch (err) {
+        console.error("KV put error:", err);
+        return NextResponse.json({ ok: false, error: `KV write failed: ${String(err)}` }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Waitlist error:", err);
-    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: `Server error: ${String(err)}` }, { status: 500 });
   }
 }
-
-export const runtime = "edge";

@@ -1039,26 +1039,33 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
   const trackedPanels = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    const handleScroll = () => {
-      const container = containerRef.current;
-      if (!container) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-      // Use getBoundingClientRect().top directly — works with both native scroll
-      // and Lenis (which applies transform instead of updating window.scrollY).
-      // Negative top = we've scrolled that many px past the section start.
+    let rafId: number;
+
+    const tick = () => {
+      // getBoundingClientRect reflects the visual position on every frame —
+      // works with Lenis (which calls window.scrollTo internally and does not
+      // reliably fire native window "scroll" events in all browsers).
       const bcrTop = container.getBoundingClientRect().top;
 
-      // Scrollable distance = total container height minus one viewport height
-      // (the sticky panel itself). Gives exactly 100vh per panel for 3 origins.
+      // Scrollable distance = total container height minus one viewport height.
+      // With 4 * 100vh container and 3 origins → 100vh per panel exactly.
       const scrollableDistance = container.offsetHeight - window.innerHeight;
       const panelHeight = scrollableDistance / origins.length;
-
       const scrolled = Math.max(0, Math.min(scrollableDistance, -bcrTop));
 
       // Switch panel at 80% of each panel's scroll zone for cinematic crossfade overlap
       const index = Math.min(origins.length - 1, Math.floor(scrolled / (panelHeight * 0.8)));
 
-      setActiveIndex(index);
+      setActiveIndex((prev) => {
+        if (prev !== index) {
+          console.log("[OriginPanel] activeIndex →", index, "| scrolled:", Math.round(scrolled), "| bcrTop:", Math.round(bcrTop));
+          return index;
+        }
+        return prev;
+      });
 
       if (!trackedPanels.current.has(index)) {
         trackedPanels.current.add(index);
@@ -1067,11 +1074,12 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
           analytics.originJourneyComplete();
         }
       }
+
+      rafId = requestAnimationFrame(tick);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [origins]);
 
   return (
