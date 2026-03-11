@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Expected JSON" }, { status: 415 });
     }
 
-    const body = (await request.json()) as { email?: string; source?: string };
+    const body = (await request.json()) as { email?: string; source?: string; locale?: string };
     const email = (body.email || "").trim().toLowerCase();
 
     if (!isValidEmail(email)) {
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         JSON.stringify({
           email,
           source: (body.source || "homepage").slice(0, 80),
+          locale: body.locale === "de" ? "de" : "en",
           createdAt: new Date().toISOString(),
         })
       );

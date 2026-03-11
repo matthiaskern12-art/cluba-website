@@ -5,160 +5,9 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 import { analytics } from "./lib/analytics";
-
-/* ─── Types ──────────────────────────────────────────────────────────────── */
-
-type HeatRange = { min: number; max: number; descriptor: string };
-
-type Chili = {
-  name: string;
-  region: string;
-  country: string;
-  species: string;
-  harvestYear: string;
-  notes: [string, string, string];
-  use: string;
-  drying: string;
-  heat: HeatRange;
-  archiveNo?: string;
-  available?: boolean;
-  image: string;
-};
-
-type OriginEntry = {
-  id: string;
-  chili: string;
-  region: string;
-  elevation: string;
-  archiveNo: string;
-  fieldNote: string;
-  imagePath: string;
-  imageAlt: string;
-  objectPosition: string;
-  accentColor: string;
-};
-
-/* ─── Data ───────────────────────────────────────────────────────────────── */
-
-const FEATURED_CHILIES: Chili[] = [
-  {
-    name: "Guajillo",
-    region: "Oaxaca Highlands",
-    country: "Mexico",
-    species: "Capsicum annuum",
-    harvestYear: "2025",
-    notes: ["Dried cherry", "Cocoa husk", "Black tea"],
-    drying: "Sun-dried for depth and clarity.",
-    use: "Sauces, broths, slow braises",
-    heat: { min: 2500, max: 5000, descriptor: "Gentle warmth" },
-    archiveNo: "2025–MX–OAX–GUA",
-    available: true,
-    image: "/images/chilies/guajillo.png",
-  },
-  {
-    name: "Ancho",
-    region: "Puebla Highlands",
-    country: "Mexico",
-    species: "Capsicum annuum",
-    harvestYear: "2025",
-    notes: ["Raisin", "Dark chocolate", "Dried plum"],
-    drying: "Slow sun-drying to concentrate natural sweetness.",
-    use: "Moles, stews, braised vegetables",
-    heat: { min: 1000, max: 2000, descriptor: "Mild warmth" },
-    archiveNo: "2025–MX–PUE–ANC",
-    available: true,
-    image: "/images/chilies/ancho.png",
-  },
-  {
-    name: "Chipotle",
-    region: "Sierra Norte",
-    country: "Mexico",
-    species: "Capsicum annuum",
-    harvestYear: "2025",
-    notes: ["Wood smoke", "Tamarind", "Tobacco"],
-    drying: "Traditionally smoked over wood for layered aroma.",
-    use: "Beans, marinades, long-cooked sauces",
-    heat: { min: 2500, max: 8000, descriptor: "Steady warmth" },
-    archiveNo: "2025–MX–SNO–CHP",
-    image: "/images/chilies/chipotle.png",
-  },
-  {
-    name: "Chile de Árbol",
-    region: "Jalisco",
-    country: "Mexico",
-    species: "Capsicum annuum",
-    harvestYear: "2025",
-    notes: ["Bright red fruit", "Clean spice", "Structured heat"],
-    drying: "Rapid sun-drying to preserve clarity.",
-    use: "Salsas, chili oils, finishing heat",
-    heat: { min: 15000, max: 30000, descriptor: "Direct heat" },
-    archiveNo: "2025–MX–JAL–ARB",
-    image: "/images/chilies/arbol.png",
-  },
-];
-
-const ORIGINS: OriginEntry[] = [
-  {
-    id: "oaxaca",
-    chili: "Guajillo",
-    region: "Oaxaca Highlands",
-    elevation: "1,800m",
-    archiveNo: "2025–MX–OAX–GUA",
-    fieldNote:
-      "The guajillo hangs in clusters like dried coral. In the Oaxacan highlands, the air thins before noon and the pods take weeks to reach their final amber. What the altitude removes — moisture, softness — the fruit concentrates into something close to leather and distant from fire.",
-    imagePath: "/images/chilies/landscape-oaxaca.png",
-    imageAlt: "Oaxaca highlands chili fields at dusk",
-    objectPosition: "center 60%",
-    accentColor: "#8B3A2A",
-  },
-  {
-    id: "puebla",
-    chili: "Ancho",
-    region: "Puebla Highlands",
-    elevation: "2,100m",
-    archiveNo: "2025–MX–PUE–ANC",
-    fieldNote:
-      "The ancho poblano begins as a poblano pepper — wide-shouldered, dark green, grown in the high valleys east of the volcano. Dried, it turns the color of aged mahogany and smells faintly of dried plum. The heat is low. The flavor is the point.",
-    imagePath: "/images/chilies/landscape-puebla.png",
-    imageAlt: "Puebla valley fields with Popocatépetl in distance",
-    objectPosition: "center 40%",
-    accentColor: "#5C3D1E",
-  },
-  {
-    id: "jalisco",
-    chili: "Chile de Árbol",
-    region: "Jalisco",
-    elevation: "1,400m",
-    archiveNo: "2025–MX–JAL–ARB",
-    fieldNote:
-      "Chile de árbol means 'tree chili' — the plant grows woody, upright, almost defiant. In Jalisco the pods dry on the branch before harvest. They arrive small, bright red, and carrying a clean, linear heat that builds without the smokiness of their cousins from the north.",
-    imagePath: "/images/chilies/landscape-jalisco.png",
-    imageAlt: "Jalisco highlands with árbol chili plants",
-    objectPosition: "center 50%",
-    accentColor: "#7A2B1A",
-  },
-];
-
-const PROCESSES = [
-  {
-    method: "Sun",
-    mark: "○",
-    description:
-      "Guajillo and árbol are laid on reed mats in direct highland sun. The drying takes 10–14 days. The skin pulls tight. The sugars concentrate without intervention.",
-  },
-  {
-    method: "Shade",
-    mark: "◐",
-    description:
-      "The ancho dries slowly in covered sheds with open sides. Slower than sun, the texture stays supple. The flavor develops complexity that direct heat would burn away.",
-  },
-  {
-    method: "Smoke",
-    mark: "◎",
-    description:
-      "Chipotle is jalapeño held over pecan and mesquite smoke for days. The heat never leaves. The smoke becomes inseparable from the flesh. It arrives tasting like memory.",
-  },
-];
+import { useLocale } from "./lib/LocaleContext";
+import { LanguageToggle } from "./components/LanguageToggle";
+import type { Chili, OriginEntry, Locale } from "./lib/i18n";
 
 /* ─── Utilities ──────────────────────────────────────────────────────────── */
 
@@ -166,8 +15,9 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function formatSHURange(min: number, max: number) {
-  return `${min.toLocaleString()}–${max.toLocaleString()} SHU`;
+function formatSHURange(min: number, max: number, locale: Locale) {
+  const l = locale === "de" ? "de-DE" : "en-US";
+  return `${min.toLocaleString(l)}\u2013${max.toLocaleString(l)} SHU`;
 }
 
 function usePrefersReducedMotion() {
@@ -265,6 +115,7 @@ function IconClose(props: React.SVGProps<SVGSVGElement>) {
 /* ─── Skip Link ──────────────────────────────────────────────────────────── */
 
 function SkipLink() {
+  const { t } = useLocale();
   return (
     <a
       href="#main"
@@ -274,7 +125,7 @@ function SkipLink() {
         color: "var(--ink)",
       }}
     >
-      Skip to content
+      {t.skipLink}
     </a>
   );
 }
@@ -282,6 +133,7 @@ function SkipLink() {
 /* ─── Waitlist Modal ─────────────────────────────────────────────────────── */
 
 function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }) {
+  const { t, locale } = useLocale();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const emailId = useId();
@@ -343,6 +195,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
         body: JSON.stringify({
           email: value,
           source: "collection-modal",
+          locale,
           chili: chili.name,
           archiveNo: chili.archiveNo,
         }),
@@ -400,7 +253,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           className="text-xs uppercase tracking-[0.22em]"
           style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}
         >
-          Harvest Record
+          {t.modal.label}
         </p>
         <h2
           id="modal-title"
@@ -417,7 +270,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           {chili.archiveNo && (
             <div className="flex justify-between gap-4">
               <dt className="text-[10px] uppercase tracking-[0.22em]" style={{ color: "var(--muted)" }}>
-                Archive No.
+                {t.modal.archiveNoLabel}
               </dt>
               <dd className="text-xs" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
                 {chili.archiveNo}
@@ -426,7 +279,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           )}
           <div className="flex justify-between gap-4">
             <dt className="text-xs uppercase tracking-[0.22em]" style={{ color: "var(--muted)" }}>
-              Species
+              {t.modal.speciesLabel}
             </dt>
             <dd className="text-sm italic" style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}>
               {chili.species}
@@ -434,7 +287,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-xs uppercase tracking-[0.22em]" style={{ color: "var(--muted)" }}>
-              Harvest
+              {t.modal.harvestLabel}
             </dt>
             <dd className="text-sm" style={{ fontFamily: "var(--font-dm-sans)", color: "var(--ink)" }}>
               {chili.harvestYear}
@@ -446,7 +299,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           {chili.notes.join(" · ")}
         </p>
         <p className="mt-2 text-xs" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
-          Heat: {formatSHURange(chili.heat.min, chili.heat.max)} · {chili.heat.descriptor}
+          {t.modal.heatLabel}: {formatSHURange(chili.heat.min, chili.heat.max, locale)} · {chili.heat.descriptor}
         </p>
 
         {submitted ? (
@@ -459,16 +312,16 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
             }}
           >
             <p className="text-lg" style={{ fontFamily: "var(--font-cormorant)", color: "var(--ink)" }}>
-              Noted. Thank you.
+              {t.modal.successTitle}
             </p>
             <p className="mt-1 text-xs" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
-              We'll reach out when this harvest is ready.
+              {t.modal.successBody}
             </p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="mt-6" aria-label="Waitlist form">
+          <form onSubmit={onSubmit} className="mt-6" aria-label={t.modal.formIntro}>
             <p className="text-sm" style={{ color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}>
-              Join the waitlist for this harvest.
+              {t.modal.formIntro}
             </p>
             <label htmlFor={emailId} className="sr-only">
               Email
@@ -480,7 +333,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                placeholder="you@domain.com"
+                placeholder={t.modal.placeholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2"
@@ -500,7 +353,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
                   fontFamily: "var(--font-dm-sans)",
                 }}
               >
-                Reserve my place
+                {t.modal.button}
                 <IconArrowRight className="h-4 w-4 opacity-80" />
               </button>
             </div>
@@ -514,6 +367,7 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
 /* ─── Chili Card ─────────────────────────────────────────────────────────── */
 
 function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili) => void }) {
+  const { t, locale } = useLocale();
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -528,7 +382,7 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
         {!imgError && (
           <Image
             src={chili.image}
-            alt={`${chili.name} dried chili pods`}
+            alt={`${chili.name} ${t.collection.imageAltSuffix}`}
             fill
             className="object-cover object-center"
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
@@ -545,7 +399,7 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
               padding: "3px 8px",
             }}
           >
-            Available
+            {t.collection.available}
           </span>
         )}
       </div>
@@ -602,13 +456,13 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
             className="uppercase"
             style={{ fontSize: "9px", letterSpacing: "0.15em", color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}
           >
-            Heat
+            {t.modal.heatLabel}
           </span>
           <span
             className="text-right"
             style={{ fontSize: "9px", color: "var(--ink)", fontFamily: "var(--font-dm-sans)" }}
           >
-            {formatSHURange(chili.heat.min, chili.heat.max)} · {chili.heat.descriptor}
+            {formatSHURange(chili.heat.min, chili.heat.max, locale)} · {chili.heat.descriptor}
           </span>
         </div>
 
@@ -617,7 +471,7 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
             className="uppercase"
             style={{ fontSize: "9px", letterSpacing: "0.15em", color: "var(--muted)", fontFamily: "var(--font-dm-sans)" }}
           >
-            Ideal for
+            {locale === "de" ? "Ideal für" : "Ideal for"}
           </span>
           <span
             className="text-right"
@@ -633,7 +487,11 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
             analytics.reserveButtonClicked(chili.name);
             onWaitlist(chili);
           }}
-          aria-label={chili.available ? `Reserve ${chili.name} harvest` : `Join waitlist for ${chili.name}`}
+          aria-label={
+            chili.available
+              ? `${t.carousel.next} ${chili.name}`
+              : `${t.waitlistEarned.button} ${chili.name}`
+          }
           className="mt-4 w-full transition-opacity hover:opacity-80 focus:outline-none focus:ring-2"
           style={{
             background: chili.available ? "var(--ink)" : "transparent",
@@ -646,7 +504,9 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
             fontFamily: "var(--font-dm-sans)",
           }}
         >
-          {chili.available ? "Reserve this harvest" : "Join waitlist"}
+          {chili.available
+            ? locale === "de" ? "Diese Ernte reservieren" : "Reserve this harvest"
+            : locale === "de" ? "Zur Warteliste" : "Join waitlist"}
         </button>
 
         {chili.archiveNo && (
@@ -671,6 +531,7 @@ function ChiliCarousel({
   chilies: Chili[];
   onWaitlist: (c: Chili) => void;
 }) {
+  const { t } = useLocale();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
 
@@ -700,7 +561,7 @@ function ChiliCarousel({
         <button
           type="button"
           onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-          aria-label="Previous"
+          aria-label={t.carousel.prev}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2"
           style={{
             border: "1px solid var(--hair)",
@@ -735,7 +596,7 @@ function ChiliCarousel({
         <button
           type="button"
           onClick={() => setCurrentIndex((i) => Math.min(maxIndex, i + 1))}
-          aria-label="Next"
+          aria-label={t.carousel.next}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2"
           style={{
             border: "1px solid var(--hair)",
@@ -754,7 +615,7 @@ function ChiliCarousel({
             key={chili.name}
             type="button"
             onClick={() => setCurrentIndex(Math.min(i, maxIndex))}
-            aria-label={`Go to ${chili.name}`}
+            aria-label={`${chili.name}`}
             aria-current={i === currentIndex}
             className="focus:outline-none focus:ring-2"
             style={{
@@ -811,6 +672,7 @@ function TopoSVG() {
 /* ─── Floating Nav ───────────────────────────────────────────────────────── */
 
 function FloatingNav({ scrolled }: { scrolled: boolean }) {
+  const { t } = useLocale();
   return (
     <nav
       aria-label="Site navigation"
@@ -834,15 +696,16 @@ function FloatingNav({ scrolled }: { scrolled: boolean }) {
           className="hidden text-[0.65rem] uppercase tracking-[0.15em] transition-opacity hover:opacity-100 sm:block"
           style={{ color: "rgba(232,221,208,0.55)", fontFamily: "var(--font-dm-sans)", textDecoration: "none" }}
         >
-          Collection
+          {t.nav.collection}
         </a>
         <a
           href="#process"
           className="hidden text-[0.65rem] uppercase tracking-[0.15em] transition-opacity hover:opacity-100 sm:block"
           style={{ color: "rgba(232,221,208,0.55)", fontFamily: "var(--font-dm-sans)", textDecoration: "none" }}
         >
-          Process
+          {t.nav.process}
         </a>
+        <LanguageToggle />
         <a
           href="#waitlist-earned"
           className="rounded-sm px-3 py-1.5 text-[0.65rem] uppercase tracking-[0.15em] transition-colors duration-200"
@@ -853,7 +716,7 @@ function FloatingNav({ scrolled }: { scrolled: boolean }) {
             textDecoration: "none",
           }}
         >
-          Reserve
+          {t.nav.reserve}
         </a>
       </div>
     </nav>
@@ -863,6 +726,7 @@ function FloatingNav({ scrolled }: { scrolled: boolean }) {
 /* ─── Section 1: Hero ────────────────────────────────────────────────────── */
 
 function HeroSection() {
+  const { t } = useLocale();
   const reduced = usePrefersReducedMotion();
   const isMobile = useMediaQuery("(max-width: 767px)");
 
@@ -933,7 +797,24 @@ function HeroSection() {
             marginTop: "2rem",
           }}
         >
-          Beyond Heat. Defined by Origin.
+          {t.hero.tagline}
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.6, ease: "easeOut" }}
+          aria-label={t.hero.archiveAriaLabel}
+          style={{
+            fontFamily: "var(--font-dm-sans)",
+            fontWeight: 300,
+            fontSize: "0.5rem",
+            letterSpacing: "0.18em",
+            color: "rgba(232,221,208,0.3)",
+            marginTop: "2.5rem",
+          }}
+        >
+          {t.hero.archiveNumbers}
         </motion.p>
       </div>
 
@@ -955,16 +836,6 @@ function HeroSection() {
           gap: "8px",
         }}
       >
-        <span
-          style={{
-            fontFamily: "var(--font-dm-sans)",
-            fontSize: "0.55rem",
-            letterSpacing: "0.25em",
-            textTransform: "uppercase",
-          }}
-        >
-          Scroll
-        </span>
         <svg width="1" height="40" viewBox="0 0 1 40">
           <line x1="0.5" y1="0" x2="0.5" y2="40" stroke="currentColor" strokeWidth="1" />
         </svg>
@@ -980,11 +851,13 @@ function DesktopOriginPanel({
   index,
   activeIndex,
   progress,
+  totalOrigins,
 }: {
   origin: OriginEntry;
   index: number;
   activeIndex: number;
   progress: number;
+  totalOrigins: number;
 }) {
   let opacity = 0;
 
@@ -994,7 +867,7 @@ function DesktopOriginPanel({
     opacity = progress > 0.85 ? (progress - 0.85) / 0.15 : 0;
   }
 
-  if (index === ORIGINS.length - 1 && activeIndex === ORIGINS.length - 1) {
+  if (index === totalOrigins - 1 && activeIndex === totalOrigins - 1) {
     opacity = 1;
   }
 
@@ -1101,7 +974,7 @@ function DesktopOriginPanel({
 
 /* ─── Mobile origin panels ───────────────────────────────────────────────── */
 
-function MobileOriginPanel({ origin, index }: { origin: OriginEntry; index: number }) {
+function MobileOriginPanel({ origin, index, totalOrigins }: { origin: OriginEntry; index: number; totalOrigins: number }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1159,24 +1032,24 @@ function MobileOriginPanel({ origin, index }: { origin: OriginEntry; index: numb
       </div>
 
       {/* Divider between panels */}
-      {index < ORIGINS.length - 1 && (
+      {index < totalOrigins - 1 && (
         <div aria-hidden="true" style={{ height: "1px", background: "rgba(212,196,168,0.12)", margin: "0 1.75rem" }} />
       )}
     </div>
   );
 }
 
-function OriginSequenceMobile() {
+function OriginSequenceMobile({ origins }: { origins: OriginEntry[] }) {
   return (
     <div style={{ background: "var(--deep)" }}>
-      {ORIGINS.map((origin, i) => (
-        <MobileOriginPanel key={origin.id} origin={origin} index={i} />
+      {origins.map((origin, i) => (
+        <MobileOriginPanel key={origin.id} origin={origin} index={i} totalOrigins={origins.length} />
       ))}
     </div>
   );
 }
 
-function OriginSequenceDesktop() {
+function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -1192,8 +1065,8 @@ function OriginSequenceDesktop() {
       const scrolled = Math.max(0, window.scrollY - containerTop);
       const rawProgress = Math.min(1, scrolled / scrollableDistance);
 
-      const panelProgress = rawProgress * ORIGINS.length;
-      const index = Math.min(ORIGINS.length - 1, Math.floor(panelProgress));
+      const panelProgress = rawProgress * origins.length;
+      const index = Math.min(origins.length - 1, Math.floor(panelProgress));
       const withinPanel = panelProgress - index;
 
       setActiveIndex(index);
@@ -1201,8 +1074,8 @@ function OriginSequenceDesktop() {
 
       if (!trackedPanels.current.has(index)) {
         trackedPanels.current.add(index);
-        analytics.originPanelViewed(ORIGINS[index].id);
-        if (trackedPanels.current.size === ORIGINS.length) {
+        analytics.originPanelViewed(origins[index].id);
+        if (trackedPanels.current.size === origins.length) {
           analytics.originJourneyComplete();
         }
       }
@@ -1211,12 +1084,12 @@ function OriginSequenceDesktop() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [origins]);
 
   return (
     <div
       ref={containerRef}
-      style={{ height: `${(ORIGINS.length + 1) * 100}vh`, position: "relative" }}
+      style={{ height: `${(origins.length + 1) * 100}vh`, position: "relative" }}
     >
       <div
         style={{
@@ -1227,13 +1100,14 @@ function OriginSequenceDesktop() {
           background: "var(--void)",
         }}
       >
-        {ORIGINS.map((origin, i) => (
+        {origins.map((origin, i) => (
           <DesktopOriginPanel
             key={origin.id}
             origin={origin}
             index={i}
             activeIndex={activeIndex}
             progress={progress}
+            totalOrigins={origins.length}
           />
         ))}
 
@@ -1254,7 +1128,7 @@ function OriginSequenceDesktop() {
           <div
             style={{
               width: "100%",
-              height: `${((activeIndex + progress) / ORIGINS.length) * 100}%`,
+              height: `${((activeIndex + progress) / origins.length) * 100}%`,
               background: "var(--accent)",
               transition: "height 0.1s ease",
             }}
@@ -1266,13 +1140,17 @@ function OriginSequenceDesktop() {
 }
 
 function OriginSequence() {
+  const { t } = useLocale();
   const isMobile = useMediaQuery("(max-width: 767px)");
-  return isMobile ? <OriginSequenceMobile /> : <OriginSequenceDesktop />;
+  return isMobile
+    ? <OriginSequenceMobile origins={t.origins} />
+    : <OriginSequenceDesktop origins={t.origins} />;
 }
 
 /* ─── Section 3: Waitlist Earned ─────────────────────────────────────────── */
 
 function WaitlistEarned() {
+  const { t, locale } = useLocale();
   const [email, setEmail] = useState("");
   const [joined, setJoined] = useState(false);
   const emailId = useId();
@@ -1285,7 +1163,7 @@ function WaitlistEarned() {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: value, source: "waitlist-earned" }),
+        body: JSON.stringify({ email: value, source: "waitlist-earned", locale }),
       });
       if (res.ok) {
         analytics.waitlistSubmitted("waitlist-earned");
@@ -1318,7 +1196,7 @@ function WaitlistEarned() {
               color: "var(--muted)",
             }}
           >
-            Three Landscapes
+            {t.waitlistEarned.label}
           </p>
 
           <h2
@@ -1331,7 +1209,7 @@ function WaitlistEarned() {
               marginTop: "1.5rem",
             }}
           >
-            You've just traveled 3,800 meters of altitude.
+            {t.waitlistEarned.headline}
           </h2>
 
           <p
@@ -1345,9 +1223,10 @@ function WaitlistEarned() {
               maxWidth: "44ch",
               marginLeft: "auto",
               marginRight: "auto",
+              whiteSpace: "pre-line",
             }}
           >
-            The first pods ship this season. Reserve yours before they&apos;re archived.
+            {t.waitlistEarned.body}
           </p>
 
           {joined ? (
@@ -1361,7 +1240,7 @@ function WaitlistEarned() {
                 marginTop: "3rem",
               }}
             >
-              Noted. You&apos;ll hear from us before the pods ship.
+              {t.waitlistEarned.success}
             </p>
           ) : (
             <form
@@ -1381,7 +1260,7 @@ function WaitlistEarned() {
                   type="email"
                   inputMode="email"
                   autoComplete="email"
-                  placeholder="your@email.com"
+                  placeholder={t.waitlistEarned.placeholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -1415,7 +1294,7 @@ function WaitlistEarned() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  Reserve a Pod
+                  {t.waitlistEarned.button}
                 </button>
               </div>
               <p
@@ -1428,7 +1307,7 @@ function WaitlistEarned() {
                   letterSpacing: "0.05em",
                 }}
               >
-                Limited to the 2025 harvest. Single-origin. Whole dried.
+                {t.waitlistEarned.finePrint}
               </p>
             </form>
           )}
@@ -1441,6 +1320,7 @@ function WaitlistEarned() {
 /* ─── Section 4: Collection ──────────────────────────────────────────────── */
 
 function CollectionSection({ onWaitlist }: { onWaitlist: (c: Chili) => void }) {
+  const { t } = useLocale();
   return (
     <section
       id="collection"
@@ -1475,7 +1355,7 @@ function CollectionSection({ onWaitlist }: { onWaitlist: (c: Chili) => void }) {
                 color: "var(--ink)",
               }}
             >
-              The Collection — 2025 Harvest
+              {t.collection.heading}
             </h2>
             <p
               style={{
@@ -1486,13 +1366,13 @@ function CollectionSection({ onWaitlist }: { onWaitlist: (c: Chili) => void }) {
                 fontSize: "0.95rem",
               }}
             >
-              Four origins. Four drying methods. Named, numbered, archived.
+              {t.collection.subheading}
             </p>
           </div>
         </Reveal>
 
         <Reveal delayMs={100}>
-          <ChiliCarousel chilies={FEATURED_CHILIES} onWaitlist={onWaitlist} />
+          <ChiliCarousel chilies={t.chilies} onWaitlist={onWaitlist} />
         </Reveal>
       </div>
     </section>
@@ -1502,6 +1382,7 @@ function CollectionSection({ onWaitlist }: { onWaitlist: (c: Chili) => void }) {
 /* ─── Section 5: Process ─────────────────────────────────────────────────── */
 
 function ProcessSection() {
+  const { t } = useLocale();
   return (
     <section
       id="process"
@@ -1522,12 +1403,12 @@ function ProcessSection() {
               marginBottom: "4rem",
             }}
           >
-            Field to Pod
+            {t.processHeading}
           </h2>
         </Reveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-          {PROCESSES.map((p, i) => (
+          {t.processes.map((p, i) => (
             <Reveal key={p.method} delayMs={i * 80}>
               <div>
                 {i > 0 && (
@@ -1582,6 +1463,7 @@ function ProcessSection() {
 /* ─── Section 6: Kitchen ─────────────────────────────────────────────────── */
 
 function KitchenSection() {
+  const { t } = useLocale();
   return (
     <section
       style={{
@@ -1607,7 +1489,7 @@ function KitchenSection() {
               marginBottom: "2.5rem",
             }}
           >
-            In Your Kitchen
+            {t.kitchen.label}
           </p>
 
           <p
@@ -1620,11 +1502,7 @@ function KitchenSection() {
               marginBottom: "3rem",
             }}
           >
-            A guajillo from Oaxaca dropped into a braise is not a background
-            note. It is the braise. It lifts the fat, defines the color, and
-            leaves something in the bottom of the pot that tells you where it
-            came from. This is what named origin does to a dish. It makes the
-            source legible.
+            {t.kitchen.body}
           </p>
 
           <p
@@ -1636,7 +1514,7 @@ function KitchenSection() {
               lineHeight: 1.4,
             }}
           >
-            &ldquo;The pod is the record. The dish is the listening.&rdquo;
+            {t.kitchen.quote}
           </p>
         </div>
       </Reveal>
@@ -1647,6 +1525,7 @@ function KitchenSection() {
 /* ─── Section 7: Close ───────────────────────────────────────────────────── */
 
 function CloseSection() {
+  const { t, locale } = useLocale();
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const emailId = useId();
@@ -1659,7 +1538,7 @@ function CloseSection() {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: value, source: "newsletter" }),
+        body: JSON.stringify({ email: value, source: "newsletter", locale }),
       });
       if (res.ok) {
         analytics.newsletterSubmitted();
@@ -1695,8 +1574,24 @@ function CloseSection() {
               lineHeight: 1.25,
             }}
           >
-            Grown in one place. Named. Numbered. Yours.
+            {t.close.heading}
           </h2>
+
+          <p
+            style={{
+              fontFamily: "var(--font-dm-sans)",
+              fontWeight: 300,
+              fontSize: "0.875rem",
+              color: "var(--muted)",
+              lineHeight: 1.75,
+              marginTop: "2rem",
+              maxWidth: "40ch",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            {t.close.packaging}
+          </p>
 
           <p
             style={{
@@ -1708,7 +1603,7 @@ function CloseSection() {
               letterSpacing: "0.06em",
             }}
           >
-            Field Notes — occasional dispatches from origin
+            {t.close.newsletterLabel}
           </p>
 
           <form
@@ -1730,7 +1625,7 @@ function CloseSection() {
               type="email"
               inputMode="email"
               autoComplete="email"
-              placeholder="your@email.com"
+              placeholder={t.close.placeholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -1763,7 +1658,7 @@ function CloseSection() {
                 whiteSpace: "nowrap",
               }}
             >
-              Subscribe
+              {t.close.button}
             </button>
           </form>
 
@@ -1778,7 +1673,7 @@ function CloseSection() {
                 animation: "fadeIn 300ms ease-out both",
               }}
             >
-              Noted. Thank you.
+              {t.close.success}
             </p>
           )}
 
@@ -1794,7 +1689,7 @@ function CloseSection() {
               marginTop: "5rem",
             }}
           >
-            CLUBA · Mexico · 2025 Harvest · cluba.com
+            {t.close.colophon}
           </p>
           <p
             style={{
@@ -1807,7 +1702,7 @@ function CloseSection() {
               marginTop: "0.5rem",
             }}
           >
-            Beyond Heat. Defined by Origin.
+            {t.close.tagline}
           </p>
         </div>
       </Reveal>

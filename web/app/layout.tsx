@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 import Script from "next/script";
 import { SmoothScroll } from "./smooth-scroll";
+import { LocaleProvider } from "./lib/LocaleContext";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -19,9 +20,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CLUBA — Beyond Heat. Defined by Origin.",
+  title: "CLUBA — Mehr als Schärfe. Definiert durch Herkunft.",
   description:
-    "Single-origin whole dried chilies. Labeled by region, species, and harvest year. Each pod reflects soil, altitude, and drying method.",
+    "Ganze getrocknete Chilis aus einer einzigen Herkunft. Beschriftet nach Region, Art und Erntejahr. Jede Schote spiegelt Boden, Höhe und Trocknungsmethode.",
   icons: { icon: "/favicon.png" },
 };
 
@@ -31,9 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
+    <html lang="de" className={`${cormorant.variable} ${dmSans.variable}`}>
       <body className="antialiased">
-        <SmoothScroll>{children}</SmoothScroll>
+        <LocaleProvider>
+          <SmoothScroll>{children}</SmoothScroll>
+        </LocaleProvider>
 
         {/* Google Analytics 4 */}
         <Script
