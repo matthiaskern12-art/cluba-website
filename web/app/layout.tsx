@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, DM_Sans } from "next/font/google";
+import Script from "next/script";
 import { SmoothScroll } from "./smooth-scroll";
 import "./globals.css";
 
@@ -33,6 +34,27 @@ export default function RootLayout({
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
       <body className="antialiased">
         <SmoothScroll>{children}</SmoothScroll>
+
+        {/* Google Analytics 4 */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-Z0FH84KH92"
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-Z0FH84KH92', { page_path: window.location.pathname });
+        `}</Script>
+
+        {/* Microsoft Clarity */}
+        <Script id="clarity-init" strategy="afterInteractive">{`
+          (function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+          })(window, document, "clarity", "script", "vtwzr6zpzd");
+        `}</Script>
       </body>
     </html>
   );

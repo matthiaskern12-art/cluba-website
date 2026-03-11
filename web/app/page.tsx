@@ -4,6 +4,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useMediaQuery } from "./hooks/useMediaQuery";
+import { analytics } from "./lib/analytics";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
@@ -346,7 +347,9 @@ function WaitlistModal({ chili, onClose }: { chili: Chili; onClose: () => void }
           archiveNo: chili.archiveNo,
         }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        analytics.waitlistSubmitted("collection-modal");
+      } else {
         const data = await res.json().catch(() => ({}));
         console.error("Waitlist failed:", (data as { error?: string }).error);
       }
@@ -626,7 +629,10 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
 
         <button
           type="button"
-          onClick={() => onWaitlist(chili)}
+          onClick={() => {
+            analytics.reserveButtonClicked(chili.name);
+            onWaitlist(chili);
+          }}
           aria-label={chili.available ? `Reserve ${chili.name} harvest` : `Join waitlist for ${chili.name}`}
           className="mt-4 w-full transition-opacity hover:opacity-80 focus:outline-none focus:ring-2"
           style={{
@@ -1096,8 +1102,26 @@ function DesktopOriginPanel({
 /* ─── Mobile origin panels ───────────────────────────────────────────────── */
 
 function MobileOriginPanel({ origin, index }: { origin: OriginEntry; index: number }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          analytics.originPanelViewed(origin.id);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [origin.id]);
+
   return (
-    <div style={{ minHeight: "100svh", display: "flex", flexDirection: "column", background: "var(--deep)" }}>
+    <div ref={panelRef} style={{ minHeight: "100svh", display: "flex", flexDirection: "column", background: "var(--deep)" }}>
       {/* Image — top half */}
       <div style={{ position: "relative", height: "55vw", minHeight: "240px", flexShrink: 0 }}>
         <Image
@@ -1156,6 +1180,7 @@ function OriginSequenceDesktop() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const trackedPanels = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1173,6 +1198,14 @@ function OriginSequenceDesktop() {
 
       setActiveIndex(index);
       setProgress(withinPanel);
+
+      if (!trackedPanels.current.has(index)) {
+        trackedPanels.current.add(index);
+        analytics.originPanelViewed(ORIGINS[index].id);
+        if (trackedPanels.current.size === ORIGINS.length) {
+          analytics.originJourneyComplete();
+        }
+      }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -1254,7 +1287,9 @@ function WaitlistEarned() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: value, source: "waitlist-earned" }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        analytics.waitlistSubmitted("waitlist-earned");
+      } else {
         const data = await res.json().catch(() => ({}));
         console.error("Waitlist failed:", (data as { error?: string }).error);
       }
@@ -1626,7 +1661,9 @@ function CloseSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: value, source: "newsletter" }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        analytics.newsletterSubmitted();
+      } else {
         const data = await res.json().catch(() => ({}));
         console.error("Waitlist failed:", (data as { error?: string }).error);
       }
