@@ -495,8 +495,9 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
           className="mt-4 w-full transition-opacity hover:opacity-80 focus:outline-none focus:ring-2"
           style={{
             background: chili.available ? "var(--ink)" : "transparent",
-            border: chili.available ? "none" : "1px solid var(--hair)",
+            border: chili.available ? "none" : "1px solid var(--accent)",
             color: chili.available ? "var(--paper)" : "var(--muted)",
+            opacity: chili.available ? 1 : 0.6,
             fontSize: "9px",
             letterSpacing: "0.2em",
             textTransform: "uppercase",
@@ -504,9 +505,7 @@ function ChiliCard({ chili, onWaitlist }: { chili: Chili; onWaitlist: (c: Chili)
             fontFamily: "var(--font-dm-sans)",
           }}
         >
-          {chili.available
-            ? locale === "de" ? "Diese Ernte reservieren" : "Reserve this harvest"
-            : locale === "de" ? "Zur Warteliste" : "Join waitlist"}
+          {locale === "de" ? "Diese Ernte reservieren" : "Reserve this harvest"}
         </button>
 
         {chili.archiveNo && (
@@ -850,35 +849,20 @@ function DesktopOriginPanel({
   origin,
   index,
   activeIndex,
-  progress,
-  totalOrigins,
 }: {
   origin: OriginEntry;
   index: number;
   activeIndex: number;
-  progress: number;
-  totalOrigins: number;
 }) {
-  let opacity = 0;
-
-  if (index === activeIndex) {
-    opacity = progress > 0.85 ? 1 - (progress - 0.85) / 0.15 : 1;
-  } else if (index === activeIndex + 1) {
-    opacity = progress > 0.85 ? (progress - 0.85) / 0.15 : 0;
-  }
-
-  if (index === totalOrigins - 1 && activeIndex === totalOrigins - 1) {
-    opacity = 1;
-  }
-
   return (
     <div
+      aria-hidden={index !== activeIndex}
       style={{
         position: "absolute",
         inset: 0,
-        opacity,
-        transition: "opacity 0.15s ease",
-        zIndex: index === activeIndex ? 2 : index === activeIndex + 1 ? 1 : 0,
+        opacity: index === activeIndex ? 1 : 0,
+        transition: "opacity 800ms ease-in-out",
+        zIndex: index === activeIndex ? 2 : 0,
       }}
     >
       {/* Background image */}
@@ -1052,7 +1036,6 @@ function OriginSequenceMobile({ origins }: { origins: OriginEntry[] }) {
 function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [progress, setProgress] = useState(0);
   const trackedPanels = useRef<Set<number>>(new Set());
 
   useEffect(() => {
@@ -1061,16 +1044,13 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
       if (!container) return;
 
       const containerTop = container.getBoundingClientRect().top + window.scrollY;
-      const scrollableDistance = container.scrollHeight - window.innerHeight;
+      const panelHeight = container.scrollHeight / origins.length;
       const scrolled = Math.max(0, window.scrollY - containerTop);
-      const rawProgress = Math.min(1, scrolled / scrollableDistance);
 
-      const panelProgress = rawProgress * origins.length;
-      const index = Math.min(origins.length - 1, Math.floor(panelProgress));
-      const withinPanel = panelProgress - index;
+      // Switch panel at 80% of each panel's scroll distance for a natural crossfade overlap
+      const index = Math.min(origins.length - 1, Math.floor(scrolled / (panelHeight * 0.8)));
 
       setActiveIndex(index);
-      setProgress(withinPanel);
 
       if (!trackedPanels.current.has(index)) {
         trackedPanels.current.add(index);
@@ -1106,8 +1086,6 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
             origin={origin}
             index={i}
             activeIndex={activeIndex}
-            progress={progress}
-            totalOrigins={origins.length}
           />
         ))}
 
@@ -1128,9 +1106,9 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
           <div
             style={{
               width: "100%",
-              height: `${((activeIndex + progress) / origins.length) * 100}%`,
+              height: `${((activeIndex + 1) / origins.length) * 100}%`,
               background: "var(--accent)",
-              transition: "height 0.1s ease",
+              transition: "height 0.8s ease",
             }}
           />
         </div>
