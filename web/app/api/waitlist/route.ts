@@ -1,7 +1,6 @@
 export const runtime = "edge";
 
-import { NextRequest, NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import type { NextRequest } from "next/server";
 
 interface KVNamespace {
   get(key: string): Promise<string | null>;
@@ -12,13 +11,6 @@ const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Content-Type": "application/json",
 };
-
-function isValidEmail(email: string) {
-  if (email.length < 3 || email.length > 320) return false;
-  const at = email.indexOf("@");
-  const dot = email.lastIndexOf(".");
-  return at > 0 && dot > at + 1 && dot < email.length - 1;
-}
 
 export async function OPTIONS() {
   return new Response(null, {
@@ -32,72 +24,55 @@ export async function OPTIONS() {
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, route: "/api/waitlist" }, { headers: CORS });
+  return new Response(JSON.stringify({ ok: true, route: "/api/waitlist" }), {
+    status: 200,
+    headers: CORS,
+  });
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const contentType = request.headers.get("content-type") || "";
-    if (!contentType.includes("application/json")) {
-      return NextResponse.json({ ok: false, error: "Expected JSON" }, { status: 415, headers: CORS });
-    }
-
-    const body = (await request.json()) as { email?: string; source?: string; locale?: string };
-    const email = (body.email || "").trim().toLowerCase();
-
-    if (!isValidEmail(email)) {
-      return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400, headers: CORS });
-    }
-
-    const { env } = getCloudflareContext();
-    const kv = (env as unknown as { CLUBA_WAITLIST: KVNamespace }).CLUBA_WAITLIST;
+    const kv = (process.env as unknown as { CLUBA_WAITLIST: KVNamespace }).CLUBA_WAITLIST;
 
     if (!kv) {
-      console.error("CLUBA_WAITLIST not found in env — check wrangler.toml binding name");
-      return NextResponse.json(
-        { ok: false, error: "Storage unavailable: CLUBA_WAITLIST binding missing" },
+      return new Response(
+        JSON.stringify({ error: "KV binding not found: CLUBA_WAITLIST" }),
         { status: 500, headers: CORS }
+      );
+    }
+
+    const body = await request.json() as { email?: string; source?: string; locale?: string };
+    const email = (body.email || "").trim().toLowerCase();
+
+    if (!email || !email.includes("@") || email.length < 3) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email" }),
+        { status: 400, headers: CORS }
       );
     }
 
     const key = `waitlist:${email}`;
+    const existing = await kv.get(key);
 
-    let existing: string | null = null;
-    try {
-      existing = await kv.get(key);
-    } catch (err) {
-      console.error("KV get error:", err);
-      return NextResponse.json(
-        { ok: false, error: `KV read failed: ${String(err)}` },
-        { status: 500, headers: CORS }
+    if (!existing) {
+      await kv.put(
+        key,
+        JSON.stringify({
+          email,
+          source: (body.source || "homepage").slice(0, 80),
+          locale: body.locale === "de" ? "de" : "en",
+          createdAt: new Date().toISOString(),
+        })
       );
     }
 
-    if (!existing) {
-      try {
-        await kv.put(
-          key,
-          JSON.stringify({
-            email,
-            source: (body.source || "homepage").slice(0, 80),
-            locale: body.locale === "de" ? "de" : "en",
-            createdAt: new Date().toISOString(),
-          })
-        );
-      } catch (err) {
-        console.error("KV put error:", err);
-        return NextResponse.json(
-          { ok: false, error: `KV write failed: ${String(err)}` },
-          { status: 500, headers: CORS }
-        );
-      }
-    }
-
-    return NextResponse.json({ ok: true }, { headers: CORS });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: CORS,
+    });
   } catch (err) {
-    console.error("Waitlist error:", err);
-    return NextResponse.json(
-      { ok: false, error: `Server error: ${String(err)}` },
+    return new Response(
+      JSON.stringify({ error: String(err) }),
       { status: 500, headers: CORS }
     );
   }

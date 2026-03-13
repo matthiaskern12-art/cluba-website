@@ -1049,7 +1049,7 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
       const sectionHeight = container.offsetHeight;
       const scrolled = window.scrollY - sectionTop;
       const panelHeight = sectionHeight / origins.length;
-      const index = Math.max(0, Math.min(origins.length - 1, Math.floor(scrolled / panelHeight / 0.8)));
+      const index = Math.min(origins.length - 1, Math.max(0, Math.floor(scrolled / panelHeight)));
 
       setActiveIndex(index);
 
@@ -1062,9 +1062,18 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
       }
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    // Defer listener attachment so layout is stable before measuring
+    const timerId = setTimeout(() => {
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("resize", handleScroll, { passive: true });
+      handleScroll();
+    }, 100);
+
+    return () => {
+      clearTimeout(timerId);
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, [origins]);
 
   return (
