@@ -8,4 +8,3 @@ assets = { directory = ".open-next/assets", binding = "ASSETS" }
 [[kv_namespaces]]
 binding = "CLUBA_WAITLIST"
 id = "49fe3c898c2f4a84af1c5e6cd51db62b"
-preview_id = "867ab57d063a4ba796931d4e1e6e5afc"
