@@ -861,8 +861,8 @@ function DesktopOriginPanel({
         position: "absolute",
         inset: 0,
         opacity: index === activeIndex ? 1 : 0,
-        transition: "opacity 800ms ease-in-out",
-        zIndex: index === activeIndex ? 2 : 0,
+        transition: "opacity 800ms ease",
+        zIndex: index === activeIndex ? 1 : 0,
       }}
     >
       {/* Background image */}
@@ -1050,8 +1050,6 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
       const panelHeight = sectionHeight / origins.length;
       const index = Math.max(0, Math.min(origins.length - 1, Math.floor(scrolled / panelHeight / 0.8)));
 
-      console.log("[OriginPanel] activeIndex →", index, "| scrolled:", Math.round(scrolled));
-
       setActiveIndex(index);
 
       if (!trackedPanels.current.has(index)) {
@@ -1082,37 +1080,40 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
           background: "var(--void)",
         }}
       >
-        {origins.map((origin, i) => (
-          <DesktopOriginPanel
-            key={origin.id}
-            origin={origin}
-            index={i}
-            activeIndex={activeIndex}
-          />
-        ))}
+        {/* Explicit relative wrapper — containing block for all absolute children */}
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          {origins.map((origin, i) => (
+            <DesktopOriginPanel
+              key={origin.id}
+              origin={origin}
+              index={i}
+              activeIndex={activeIndex}
+            />
+          ))}
 
-        {/* Scroll progress indicator */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            right: "2rem",
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: "1px",
-            height: "6rem",
-            background: "rgba(212,196,168,0.15)",
-            zIndex: 100,
-          }}
-        >
+          {/* Scroll progress indicator */}
           <div
+            aria-hidden="true"
             style={{
-              width: "100%",
-              height: `${((activeIndex + 1) / origins.length) * 100}%`,
-              background: "var(--accent)",
-              transition: "height 0.8s ease",
+              position: "absolute",
+              right: "2rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "1px",
+              height: "6rem",
+              background: "rgba(212,196,168,0.15)",
+              zIndex: 100,
             }}
-          />
+          >
+            <div
+              style={{
+                width: "100%",
+                height: `${((activeIndex + 1) / origins.length) * 100}%`,
+                background: "var(--accent)",
+                transition: "height 0.8s ease",
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>
