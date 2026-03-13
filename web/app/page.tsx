@@ -1040,39 +1040,37 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
   const trackedPanels = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    const handleScroll = () => {
-      const container = containerRef.current;
-      if (!container) return;
+    const el = containerRef.current;
+    if (!el) return;
 
-      const rect = container.getBoundingClientRect();
-      const sectionTop = rect.top + window.scrollY;
-      const sectionHeight = container.offsetHeight;
-      const scrolled = window.scrollY - sectionTop;
-      const panelHeight = sectionHeight / origins.length;
-      const index = Math.min(origins.length - 1, Math.max(0, Math.floor(scrolled / panelHeight)));
+    const getTop = () => el.getBoundingClientRect().top + window.scrollY;
 
-      setActiveIndex(index);
+    const onScroll = () => {
+      const top = getTop();
+      const scrolled = window.scrollY - top;
+      const third = el.offsetHeight / 3;
+      const i = Math.max(0, Math.min(2, Math.floor(scrolled / third)));
 
-      if (!trackedPanels.current.has(index)) {
-        trackedPanels.current.add(index);
-        analytics.originPanelViewed(origins[index].id);
+      setActiveIndex(i);
+
+      if (!trackedPanels.current.has(i)) {
+        trackedPanels.current.add(i);
+        analytics.originPanelViewed(origins[i].id);
         if (trackedPanels.current.size === origins.length) {
           analytics.originJourneyComplete();
         }
       }
     };
 
-    // Defer listener attachment so layout is stable before measuring
+    // Defer attachment 500ms so page layout is fully stable before measuring
     const timerId = setTimeout(() => {
-      window.addEventListener("scroll", handleScroll, { passive: true });
-      window.addEventListener("resize", handleScroll, { passive: true });
-      handleScroll();
-    }, 100);
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    }, 500);
 
     return () => {
       clearTimeout(timerId);
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
+      window.removeEventListener("scroll", onScroll);
     };
   }, [origins]);
 
