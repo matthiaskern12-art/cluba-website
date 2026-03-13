@@ -23,7 +23,9 @@ export const metadata: Metadata = {
   title: "CLUBA — Mehr als Schärfe. Definiert durch Herkunft.",
   description:
     "Ganze getrocknete Chilis aus einer einzigen Herkunft. Beschriftet nach Region, Art und Erntejahr. Jede Schote spiegelt Boden, Höhe und Trocknungsmethode.",
-  icons: { icon: "/favicon.png" },
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
