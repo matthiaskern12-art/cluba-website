@@ -1039,33 +1039,20 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
   const trackedPanels = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    let rafId: number;
+      const rect = container.getBoundingClientRect();
+      const sectionTop = rect.top + window.scrollY;
+      const sectionHeight = container.offsetHeight;
+      const scrolled = window.scrollY - sectionTop;
+      const panelHeight = sectionHeight / origins.length;
+      const index = Math.max(0, Math.min(origins.length - 1, Math.floor(scrolled / panelHeight / 0.8)));
 
-    const tick = () => {
-      // getBoundingClientRect reflects the visual position on every frame —
-      // works with Lenis (which calls window.scrollTo internally and does not
-      // reliably fire native window "scroll" events in all browsers).
-      const bcrTop = container.getBoundingClientRect().top;
+      console.log("[OriginPanel] activeIndex →", index, "| scrolled:", Math.round(scrolled));
 
-      // Scrollable distance = total container height minus one viewport height.
-      // With 4 * 100vh container and 3 origins → 100vh per panel exactly.
-      const scrollableDistance = container.offsetHeight - window.innerHeight;
-      const panelHeight = scrollableDistance / origins.length;
-      const scrolled = Math.max(0, Math.min(scrollableDistance, -bcrTop));
-
-      // Switch panel at 80% of each panel's scroll zone for cinematic crossfade overlap
-      const index = Math.min(origins.length - 1, Math.floor(scrolled / (panelHeight * 0.8)));
-
-      setActiveIndex((prev) => {
-        if (prev !== index) {
-          console.log("[OriginPanel] activeIndex →", index, "| scrolled:", Math.round(scrolled), "| bcrTop:", Math.round(bcrTop));
-          return index;
-        }
-        return prev;
-      });
+      setActiveIndex(index);
 
       if (!trackedPanels.current.has(index)) {
         trackedPanels.current.add(index);
@@ -1074,18 +1061,17 @@ function OriginSequenceDesktop({ origins }: { origins: OriginEntry[] }) {
           analytics.originJourneyComplete();
         }
       }
-
-      rafId = requestAnimationFrame(tick);
     };
 
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [origins]);
 
   return (
     <div
       ref={containerRef}
-      style={{ height: `${(origins.length + 1) * 100}vh`, position: "relative" }}
+      style={{ position: "relative", height: "300vh" }}
     >
       <div
         style={{

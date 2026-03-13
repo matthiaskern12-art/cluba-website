@@ -33,6 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className={`${cormorant.variable} ${dmSans.variable}`}>
+      <head>
+        <link rel="icon" href="/favicon.png" type="image/png" />
+      </head>
       <body className="antialiased">
         <LocaleProvider>
           <SmoothScroll>{children}</SmoothScroll>

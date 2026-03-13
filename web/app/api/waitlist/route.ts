@@ -8,6 +8,11 @@ interface KVNamespace {
   put(key: string, value: string): Promise<void>;
 }
 
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Content-Type": "application/json",
+};
+
 function isValidEmail(email: string) {
   if (email.length < 3 || email.length > 320) return false;
   const at = email.indexOf("@");
@@ -15,22 +20,33 @@ function isValidEmail(email: string) {
   return at > 0 && dot > at + 1 && dot < email.length - 1;
 }
 
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
 export async function GET() {
-  return NextResponse.json({ ok: true, route: "/api/waitlist" });
+  return NextResponse.json({ ok: true, route: "/api/waitlist" }, { headers: CORS });
 }
 
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      return NextResponse.json({ ok: false, error: "Expected JSON" }, { status: 415 });
+      return NextResponse.json({ ok: false, error: "Expected JSON" }, { status: 415, headers: CORS });
     }
 
     const body = (await request.json()) as { email?: string; source?: string; locale?: string };
     const email = (body.email || "").trim().toLowerCase();
 
     if (!isValidEmail(email)) {
-      return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400, headers: CORS });
     }
 
     const { env } = getCloudflareContext();
@@ -38,7 +54,10 @@ export async function POST(request: NextRequest) {
 
     if (!kv) {
       console.error("CLUBA_WAITLIST not found in env — check wrangler.toml binding name");
-      return NextResponse.json({ ok: false, error: "Storage unavailable: CLUBA_WAITLIST binding missing" }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: "Storage unavailable: CLUBA_WAITLIST binding missing" },
+        { status: 500, headers: CORS }
+      );
     }
 
     const key = `waitlist:${email}`;
@@ -48,7 +67,10 @@ export async function POST(request: NextRequest) {
       existing = await kv.get(key);
     } catch (err) {
       console.error("KV get error:", err);
-      return NextResponse.json({ ok: false, error: `KV read failed: ${String(err)}` }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: `KV read failed: ${String(err)}` },
+        { status: 500, headers: CORS }
+      );
     }
 
     if (!existing) {
@@ -64,13 +86,19 @@ export async function POST(request: NextRequest) {
         );
       } catch (err) {
         console.error("KV put error:", err);
-        return NextResponse.json({ ok: false, error: `KV write failed: ${String(err)}` }, { status: 500 });
+        return NextResponse.json(
+          { ok: false, error: `KV write failed: ${String(err)}` },
+          { status: 500, headers: CORS }
+        );
       }
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: CORS });
   } catch (err) {
     console.error("Waitlist error:", err);
-    return NextResponse.json({ ok: false, error: `Server error: ${String(err)}` }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: `Server error: ${String(err)}` },
+      { status: 500, headers: CORS }
+    );
   }
 }
