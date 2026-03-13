@@ -863,6 +863,7 @@ function DesktopOriginPanel({
         opacity: index === activeIndex ? 1 : 0,
         transition: "opacity 800ms ease",
         zIndex: index === activeIndex ? 1 : 0,
+        pointerEvents: index === activeIndex ? "auto" : "none",
       }}
     >
       {/* Background image */}
